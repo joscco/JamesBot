@@ -1,0 +1,32 @@
+{
+  "name": "james_bot",
+  "version": "1.0.0",
+  "description": "Telegram Reminder Bot for Birthdays and Garbage Dates",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joscco/JamesBot.git"
+  },
+  "keywords": [
+    "Nodejs",
+    "AWS",
+    "Telegram"
+  ],
+  "author": "Joscco",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joscco/JamesBot/issues"
+  },
+  "homepage": "https://github.com/joscco/JamesBot#readme",
+  "dependencies": {
+    "aws-sdk": "^2.963.0",
+    "crypto": "^1.0.1",
+    "telegraf": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^16.4.13"
+  }
+}
