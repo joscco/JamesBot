@@ -1,6 +1,5 @@
 import {Telegraf} from "telegraf";
-import * as commands from "./src/commands";
-import {sendDailyBirthdayReminder, sendDailyGarbageReminder} from "./src/commands";
+import * as commands from "./commands";
 
 const botToken = process.env.BOT_TOKEN;
 
@@ -41,7 +40,7 @@ bot.hears(/Wer hat im [a-zA-Z]+ Geburtstag/i, commands.showBirthdaysForMonth);
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!
 
 // Main Lambda function
-exports.mainHandler = async function (event) {
+exports.mainHandler = async function (event: { body: any; }) {
     try {
         await bot.launch({
             webhook: {
@@ -63,7 +62,7 @@ exports.mainHandler = async function (event) {
 exports.birthdayTriggerHandler = async function () {
     try {
         console.log("Führe Birthday Reminder aus.");
-        await sendDailyBirthdayReminder(bot);
+        await commands.sendDailyBirthdayReminder(bot);
         console.log("Birthday Reminder ausgeführt.");
     } catch (err) {
         console.log("Upps, ein Fehler ist aufgetreten: " + err)
@@ -74,7 +73,7 @@ exports.birthdayTriggerHandler = async function () {
 exports.garbageTriggerHandler = async function () {
     try {
         console.log("Führe Garbage Reminder aus.");
-        await sendDailyGarbageReminder(bot);
+        await commands.sendDailyGarbageReminder(bot);
         console.log("Garbage Reminder ausgeführt.");
     } catch (err) {
         console.log("Upps, ein Fehler ist aufgetreten: " + err)
