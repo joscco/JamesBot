@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install dependencies, build application and zip folder contents
-        run: npm install && npm run build && cp -r ./node_modules dist && cp dist && zip -qq -r ./james_bot.zip . && mv james_bot.zip ..
+        run: npm install && npm run build && cp -r ./node_modules dist && cd dist && zip -qq -r ./james_bot.zip . && mv james_bot.zip ..
       - name: Main Deploy AWS Lambda
         uses: appleboy/lambda-action@master
         with:

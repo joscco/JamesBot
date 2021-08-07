@@ -40,7 +40,7 @@ bot.hears(/Wer hat im [a-zA-Z]+ Geburtstag/i, commands.showBirthdaysForMonth);
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!
 
 // Main Lambda function
-exports.mainHandler = async function (event: { body: any; }) {
+exports.mainHandler = async function (event) {
     try {
         await bot.launch({
             webhook: {
