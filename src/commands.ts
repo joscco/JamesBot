@@ -6,7 +6,7 @@ let chat_ids = [process.env.MA_CHAT_ID, process.env.JO_CHAT_ID];
 
 const dateRegex = /^(([1-9]|[12][0-9]|3[01])-([1-9]|1[012]))$/
 const nameRegex = /^[a-zäöüßA-ZÄÖÜ-]+$/
-const garbageTypeRegex = /^[schwarz|gelb|grün|braun]+$/i
+const garbageTypeRegex = /^(schwarz|gelb|grün|braun)+$/i
 
 function isDate(input: string): boolean {
     return dateRegex.test(input);
@@ -67,8 +67,12 @@ export async function showNextBirthdays(ctx): Promise<any> {
     let positiveLogMessage = "Geburtstage gefunden.";
     let negativeAnswer = "Oh nein, da ist was schiefgelaufen...";
     let negativeLogMessage = "Die Suche hat nicht funktioniert. Error JSON:";
-    let positiveAction = (data) => logAndReply(ctx, positiveLogMessage, buildShowNextBirthdaysAnswer(data, numberOfDays));
-    let negativeAction = (err) => logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
+    let positiveAction = async (data) => {
+        await logAndReply(ctx, positiveLogMessage, buildShowNextBirthdaysAnswer(data, numberOfDays));
+    }
+    let negativeAction = async (err) => {
+        await logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
+    }
 
     await scanTable(scanArgs, positiveAction, negativeAction);
 }
@@ -103,8 +107,12 @@ export async function addGarbage(ctx) {
             let positiveLogMessage = "Mülltermin hinzugefügt.";
             let negativeAnswer = "Oh nein, da ist was schiefgelaufen...";
             let negativeLogMessage = "Kann Item nicht hinzufügen. Error JSON:";
-            let positiveAction = () => logAndReply(ctx, positiveLogMessage, positiveAnswer);
-            let negativeAction = (err) => logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
+            let positiveAction = async () => {
+                await logAndReply(ctx, positiveLogMessage, positiveAnswer);
+            }
+            let negativeAction = async (err) => {
+                await logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
+            }
             await putItem(item, positiveAction, negativeAction);
             console.log("Funktionsaufruf Datenbank ist durch");
         } else {
@@ -134,11 +142,11 @@ export async function addBirthday(ctx) {
             let positiveLogMessage = "Geburtstag hinzugefügt.";
             let negativeAnswer = "Oh nein, da ist was schiefgelaufen...";
             let negativeLogMessage = "Kann Item nicht hinzufügen. Error JSON:";
-            let positiveAction = async function() {
-                logAndReply(ctx, positiveLogMessage, positiveAnswer);
+            let positiveAction = async () => {
+                await logAndReply(ctx, positiveLogMessage, positiveAnswer);
             };
-            let negativeAction = async function(err) {
-                logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
+            let negativeAction = async (err) => {
+                await logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
             };
             await putItem(item, positiveAction, negativeAction);
             console.log("Funktionsaufruf Datenbank ist durch");
@@ -150,23 +158,32 @@ export async function addBirthday(ctx) {
     }
 }
 
-export function deleteBirthday() {}
+export function deleteBirthday() {
+}
 
-export function showSpecificBirthday() {}
+export function showSpecificBirthday() {
+}
 
-export function showNextSpecificGarbage() {}
+export function showNextSpecificGarbage() {
+}
 
-export function showGarbagesNextMonth() {}
+export function showGarbagesNextMonth() {
+}
 
-export function showBirthdaysForMonth() {}
+export function showBirthdaysForMonth() {
+}
 
-export function showGarbagesThisMonth() {}
+export function showGarbagesThisMonth() {
+}
 
-export function showNextGarbages() {}
+export function showNextGarbages() {
+}
 
-export function deleteAllGarbage() {}
+export function deleteAllGarbage() {
+}
 
-export function deleteGarbage() {}
+export function deleteGarbage() {
+}
 
 export function generateHelpText(): string {
     return "Ich helfe dir, dich an Geburtstage und Mülltage zu erinnern.\n"
@@ -188,25 +205,28 @@ export async function sendDailyBirthdayReminder(bot) {
             "#Type": "event_type"
         },
         ExpressionAttributeValues: {
-            ":today": todayAsString ,
+            ":today": todayAsString,
             ":birthday": "Birthday"
         }
     }
 
     let negativeAction = (err) => console.error("Tabelle kann nicht gescannt werden. Fehler: ", JSON.stringify(err, null, 2));
-    let positiveAction = (data) => {
+    let positiveAction = async (data) => {
         console.log("Scan erfolgreich.");
-        console.log("Gescannte Elemente: "+ data.ScannedCount);
-        console.log("Heute gibt es " + data.Items.length + " Mülldaten.");
-        console.log("Daten waren: Datum morgen: " + todayAsString);
-        console.log("Scan erfolgreich.");
-        data.Items.forEach(birthday => {
-            chat_ids.forEach(chat_id => {
-                let message = generateBirthdayReminderMessage(birthday);
-                bot.telegram.sendMessage(chat_id, message);
-                console.log("Chat_ID " + chat_id + " wurde informiert.");
-            });
-        })
+        console.log("Gescannte Elemente: " + data.ScannedCount);
+        console.log("Heute gibt es " + data.Items.length + " Geburtstag(e).");
+        console.log("Daten waren: Datum heute: " + todayAsString);
+        for (const birthday of data) {
+            for (const chat_id of chat_ids) {
+                try {
+                    let message = generateBirthdayReminderMessage(birthday);
+                    await bot.telegram.sendMessage(chat_id, message);
+                    console.log("Chat_ID " + chat_id + " wurde informiert.");
+                } catch (err) {
+                    console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
+                }
+            }
+        }
 
     }
     await scanTable(birthdayArgs, positiveAction, negativeAction);
@@ -217,7 +237,8 @@ function generateBirthdayReminderMessage(birthday) {
         + birthday.first_name
         + " "
         + birthday.second_name
-        + " Geburtstag!\nVergiss nicht zu gratulieren 🎁";
+        + " Geburtstag!\n"
+        + "Vergiss nicht zu gratulieren 🎁";
 }
 
 export async function sendDailyGarbageReminder(bot) {
@@ -238,20 +259,25 @@ export async function sendDailyGarbageReminder(bot) {
     }
 
     let negativeAction = (err) => console.error("Tabelle kann nicht gescannt werden. Fehler: ", JSON.stringify(err, null, 2));
-    let positiveAction = (data) => {
+    let positiveAction = async (data) => {
         console.log("Scan erfolgreich.");
-        console.log("Gescannte Elemente: "+ data.ScannedCount);
+        console.log("Gescannte Elemente: " + data.ScannedCount);
         console.log("Heute gibt es " + data.Items.length + " Mülldaten.");
         console.log("Daten waren: Datum morgen: " + tomorrowAsString);
         console.log("Scan erfolgreich.");
-        data.Items.forEach(garbage => {
-            chat_ids.forEach(chat_id => {
-                let message = generateGarbageReminderMessage(garbage);
-                bot.telegram.sendMessage(chat_id, message);
-                console.log("Chat_ID " + chat_id + " wurde informiert.");
-            });
-        })
+        for (const garbage of data.Items) {
+            for (const chat_id of chat_ids) {
+                try {
+                    let message = generateGarbageReminderMessage(garbage);
+                    await bot.telegram.sendMessage(chat_id, message);
+                    console.log("Chat_ID " + chat_id + " wurde informiert.");
+                } catch (err) {
+                    console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
+                }
+            }
+        }
     }
+
     await scanTable(garbageArgs, positiveAction, negativeAction);
 }
 

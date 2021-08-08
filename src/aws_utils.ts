@@ -32,7 +32,7 @@ export async function putItem(item, positiveAction: EmptyReceiver, failAction: D
     try {
         await docClient.put(params).promise();
         positiveAction();
-    } catch(err) {
+    } catch (err) {
         failAction(err);
     }
 }
@@ -41,9 +41,9 @@ export async function scanTable(args, positiveAction: DataReceiver, failAction: 
     let params = createScanParams(args);
     try {
         const data = await docClient.scan(params).promise();
-        positiveAction(data);
-    } catch(err) {
-        failAction(err);
+        await positiveAction(data);
+    } catch (err) {
+        await failAction(err);
     }
 }
 
