@@ -216,7 +216,7 @@ export async function sendDailyBirthdayReminder(bot) {
         console.log("Gescannte Elemente: " + data.ScannedCount);
         console.log("Heute gibt es " + data.Items.length + " Geburtstag(e).");
         console.log("Daten waren: Datum heute: " + todayAsString);
-        for (const birthday of data) {
+        for (const birthday of data.Items) {
             for (const chat_id of chat_ids) {
                 try {
                     let message = generateBirthdayReminderMessage(birthday);
