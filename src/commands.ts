@@ -1,11 +1,37 @@
 import {randomUUID} from "crypto";
 import {putItem, scanTable} from "./aws_utils";
+import {Context, NarrowedContext} from "telegraf";
+import {Update} from "typegram";
+import {MountMap} from "telegraf/typings/telegram-types";
+
+type CommandContext = NarrowedContext<Context<Update>, MountMap["text"]>;
+
+class ValidationResult {
+    hasErrors: boolean;
+    errorMessage: string;
+}
+
+type BirthdayItem = {
+    event_id: string,
+    event_type: "Birthday",
+    date: string,
+    first_name: string,
+    second_name: string
+}
+
+type GarbageItem = {
+    event_id: string,
+    event_type: "Garbage",
+    date: string,
+    garbage_type: string
+}
 
 // Only Accept Orders from Matze or Jonathan
 let chat_ids = [process.env.MA_CHAT_ID, process.env.JO_CHAT_ID];
 
 const dateRegex = /^(([1-9]|[12][0-9]|3[01])-([1-9]|1[012]))$/
 const nameRegex = /^[a-zäöüßA-ZÄÖÜ-]+$/
+const nonNegativeNumberRegex = /^[0-9]+$/
 const garbageTypeRegex = /^(schwarz|gelb|grün|braun)+$/i
 
 function isDate(input: string): boolean {
@@ -14,6 +40,10 @@ function isDate(input: string): boolean {
 
 function isName(input: string): boolean {
     return input != null && nameRegex.test(input);
+}
+
+function isNonNegativeNumber(input: string): boolean {
+    return input != null && nonNegativeNumberRegex.test(input);
 }
 
 function isGarbageType(input: string): boolean {
@@ -32,55 +62,140 @@ function getDateAsString(date: Date): string {
     return (date.getDate()) + "-" + (date.getMonth() + 1);
 }
 
-export async function showNextBirthdays(ctx): Promise<any> {
-    let parameters = ctx.update.message.text.split(" ");
-    console.log("Starte showNextBirthdays mit Parameter: " + parameters[4]);
-    let numberOfDays = parameters[4];
-    let stringDays = [];
-    let today = new Date();
-
-    for (let n = 0; n <= numberOfDays; n++) {
-        let dateInNDays = new Date();
-        console.log("dateInNDays: " + dateInNDays);
-        dateInNDays.setDate(today.getDate() + n);
-        stringDays.push(getDateAsString(dateInNDays));
+function validateShowNextBirthdaysParameters(params: string[]): ValidationResult {
+    let validationResult = new ValidationResult();
+    if (params.length != 2) {
+        validationResult.errorMessage = "Ich brauche einen Parameter: Anzahl der nächsten Tage, in denen ich nach Geburtstagen suchen soll.";
+        validationResult.hasErrors = true;
+    } else if (isNonNegativeNumber(params[1])) {
+        validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche eine Zahl >= 0.";
+        validationResult.hasErrors = true;
+    } else {
+        validationResult.hasErrors = false;
     }
-
-    let titleObject = {":birthday": "Birthday"};
-    let index = 0;
-    stringDays.forEach(date => {
-        index++;
-        let titleKey = ":datum" + index;
-        titleObject[titleKey.toString()] = date;
-    });
-    console.log("Object: " + JSON.stringify(titleObject));
-
-    const scanArgs = {
-        FilterExpression: "#Type = :birthday and #Datum IN (" + Object.keys(titleObject).toString() + ")",
-        ExpressionAttributeNames: {
-            "#Datum": "date",
-            "#Type": "event_type"
-        },
-        ExpressionAttributeValues: titleObject
-    };
-
-    let positiveLogMessage = "Geburtstage gefunden.";
-    let negativeAnswer = "Oh nein, da ist was schiefgelaufen...";
-    let negativeLogMessage = "Die Suche hat nicht funktioniert. Error JSON:";
-    let positiveAction = async (data) => {
-        await logAndReply(ctx, positiveLogMessage, buildShowNextBirthdaysAnswer(data, numberOfDays));
-    }
-    let negativeAction = async (err) => {
-        await logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
-    }
-
-    await scanTable(scanArgs, positiveAction, negativeAction);
+    return validationResult;
 }
 
-function buildShowNextBirthdaysAnswer(data, numberOfDays: string) {
+function validateShowNextGarbagesParameters(params: string[]): ValidationResult {
+    let validationResult = new ValidationResult();
+    if (params.length != 2) {
+        validationResult.errorMessage = "Ich brauche einen Parameter: Anzahl der nächsten Tage, in denen ich nach Mülldaten suchen soll.";
+        validationResult.hasErrors = true;
+    } else if (isNonNegativeNumber(params[1])) {
+        validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche eine Zahl >= 0.";
+        validationResult.hasErrors = true;
+    } else {
+        validationResult.hasErrors = false;
+    }
+    return validationResult;
+}
+
+export async function showNextBirthdays(ctx: CommandContext): Promise<any> {
+    let parameters = getCommandParameters(ctx);
+    let validationResult = validateShowNextBirthdaysParameters(parameters);
+    if (validationResult.hasErrors) {
+        await ctx.reply(validationResult.errorMessage);
+    } else {
+        let numberOfDays = parseInt(parameters[1]);
+        let stringDays = [];
+        let today = new Date();
+
+        for (let n = 0; n <= numberOfDays; n++) {
+            let dateInNDays = new Date();
+            console.log("dateInNDays: " + dateInNDays);
+            dateInNDays.setDate(today.getDate() + n);
+            stringDays.push(getDateAsString(dateInNDays));
+        }
+
+        let titleObject = {":birthday": "Birthday"};
+        let index = 0;
+        stringDays.forEach(date => {
+            index++;
+            let titleKey = ":datum" + index;
+            titleObject[titleKey.toString()] = date;
+        });
+        console.log("Object: " + JSON.stringify(titleObject));
+
+        const scanArgs = {
+            FilterExpression: "#Type = :birthday and #Datum IN (" + Object.keys(titleObject).toString() + ")",
+            ExpressionAttributeNames: {
+                "#Datum": "date",
+                "#Type": "event_type"
+            },
+            ExpressionAttributeValues: titleObject
+        };
+
+        let operationResult = await scanTable(scanArgs);
+        let data = operationResult.data;
+        let answer = operationResult.hasError
+            ? "Oh nein, da ist was schiefgelaufen..."
+            : buildShowNextBirthdaysAnswer(data, numberOfDays);
+        let logMessage = operationResult.hasError
+            ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+            : "Geburtstage gefunden.";
+        await logAndReply(ctx, logMessage, answer);
+    }
+}
+
+export async function showNextGarbages(ctx: CommandContext) {
+    let parameters = getCommandParameters(ctx);
+    let validationResult = validateShowNextGarbagesParameters(parameters);
+    if (validationResult.hasErrors) {
+        await ctx.reply(validationResult.errorMessage);
+    } else {
+        let numberOfDays = parseInt(parameters[1]);
+        let stringDays = [];
+        let today = new Date();
+
+        for (let n = 0; n <= numberOfDays; n++) {
+            let dateInNDays = new Date();
+            console.log("dateInNDays: " + dateInNDays);
+            dateInNDays.setDate(today.getDate() + n);
+            stringDays.push(getDateAsString(dateInNDays));
+        }
+
+        let titleObject = {":garbage": "Garbage"};
+        let index = 0;
+        stringDays.forEach(date => {
+            index++;
+            let titleKey = ":datum" + index;
+            titleObject[titleKey.toString()] = date;
+        });
+        console.log("Object: " + JSON.stringify(titleObject));
+
+        const scanArgs = {
+            FilterExpression: "#Type = :garbage and #Datum IN (" + Object.keys(titleObject).toString() + ")",
+            ExpressionAttributeNames: {
+                "#Datum": "date",
+                "#Type": "event_type"
+            },
+            ExpressionAttributeValues: titleObject
+        };
+
+        let operationResult = await scanTable(scanArgs);
+        let data = operationResult.data;
+        let answer = operationResult.hasError
+            ? "Oh nein, da ist was schiefgelaufen..."
+            : buildShowNextGarbagesAnswer(data, numberOfDays);
+        let logMessage = operationResult.hasError
+            ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+            : "Mülldaten gefunden.";
+        await logAndReply(ctx, logMessage, answer);
+    }
+}
+
+function buildShowNextBirthdaysAnswer(data, numberOfDays: number) {
     let message = "Folgende Personen haben in den nächsten " + numberOfDays + " Tagen Geburstag:\n";
     data.Items.forEach(row => {
         message += row.first_name + " " + row.second_name + " am " + row.date + "\n";
+    })
+    return message;
+}
+
+function buildShowNextGarbagesAnswer(data, numberOfDays: number) {
+    let message = "Folgende Mülldaten gibt es in den nächsten " + numberOfDays + " Tagen:\n";
+    data.Items.forEach(row => {
+        message += getGarbageDescription(normalizeGarbageType(row.garbage_type)) + " am " + row.date + "\n";
     })
     return message;
 }
@@ -90,71 +205,158 @@ function logAndReply(ctx, logMessage: string, answer: string) {
     ctx.reply(answer);
 }
 
-export async function addGarbage(ctx) {
-    let parameters = ctx.update.message.text.split(" ");
-    if (parameters.length == 3) {
-        if (isGarbageType(parameters[1]) && isDate(parameters[2])) {
-            let garbageType = parameters[1];
-            let garbageDate = parameters[2];
-            let item = {
-                "event_id": randomUUID(),
-                "event_type": "Garbage",
-                "date": garbageDate,
-                "garbage_type": normalizeGarbageType(garbageType)
-            };
-            console.log("Füge Müll (" + garbageType + ") am " + garbageDate + " hinzu.");
-            let positiveAnswer = "Ich einen Mülltermin (" + garbageType + ") am " + garbageDate + " hinzugefügt";
-            let positiveLogMessage = "Mülltermin hinzugefügt.";
-            let negativeAnswer = "Oh nein, da ist was schiefgelaufen...";
-            let negativeLogMessage = "Kann Item nicht hinzufügen. Error JSON:";
-            let positiveAction = async () => {
-                await logAndReply(ctx, positiveLogMessage, positiveAnswer);
-            }
-            let negativeAction = async (err) => {
-                await logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
-            }
-            await putItem(item, positiveAction, negativeAction);
-            console.log("Funktionsaufruf Datenbank ist durch");
-        } else {
-            ctx.reply("Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Müllfarbe, dann ein Datum wie 31-12 oder 6-7. Und beide Parameter durch Leerzeichen getrennt.");
+async function isBirthdayDuplicate(birthdayItem: BirthdayItem): Promise<boolean> {
+    let titleObject = {":birthday": "Birthday"};
+    console.log("Object: " + JSON.stringify(titleObject));
+
+    const scanArgs = {
+        FilterExpression: "#Type = :birthday and #Datum = :date and #FirstName = :firstName and #SecondName = :secondName",
+        ExpressionAttributeNames: {
+            "#Datum": "date",
+            "#Type": "event_type",
+            "#FirstName": "first_name",
+            "#SecondName": "second_name"
+        },
+        ExpressionAttributeValues: {
+            ":birthday": "Birthday",
+            ":date": birthdayItem.date,
+            ":firstName": birthdayItem.first_name,
+            ":secondName": birthdayItem.second_name
         }
+    };
+    let result = await scanTable(scanArgs);
+    return result.data.Count > 0;
+}
+
+async function isGarbageDuplicate(garbageItem: GarbageItem): Promise<boolean> {
+    const scanArgs = {
+        FilterExpression: "#Type = :garbage and #Datum = :date and #GarbageType = :garbageType",
+        ExpressionAttributeNames: {
+            "#Datum": "date",
+            "#Type": "event_type",
+            "#GarbageType": "garbage_type"
+        },
+        ExpressionAttributeValues: {
+            ":birthday": "Birthday",
+            ":date": garbageItem.date,
+            ":garbageType": garbageItem.garbage_type
+        }
+    };
+    let result = await scanTable(scanArgs);
+    return result.data.Count > 0;
+}
+
+export async function addGarbage(ctx: CommandContext) {
+    let parameters = getCommandParameters(ctx);
+    let validationResult = validateAddGarbageParameters(parameters);
+    if (validationResult.hasErrors) {
+        await ctx.reply(validationResult.errorMessage);
     } else {
-        ctx.reply("Ich brauche zwei Parameter: Müllfarbe und Datum (dd-mm). Bitte nochmal");
+        let garbageType = parameters[1];
+        let garbageDate = parameters[2];
+        let item = createAddGarbageItem(garbageType, garbageDate);
+        let isDuplicate = await isGarbageDuplicate(item);
+
+        let answer: string;
+        let logMessage: string;
+
+        if (isDuplicate) {
+            answer = "Danke, aber diesen Eintrag habe ich bereits. Versuch's nochmal :)";
+            logMessage = "Duplikat gefunden. Eintrag wird nicht hinzugefügt.";
+        } else {
+            console.log("Füge Müll (" + garbageType + ") am " + garbageDate + " hinzu.");
+            let operationResult = await putItem(item);
+            answer = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..."
+                : "Ich einen Mülltermin (" + garbageType + ") am " + garbageDate + " hinzugefügt";
+            logMessage = operationResult.hasError
+                ? "Kann Item nicht hinzufügen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+                : "Mülltermin hinzugefügt.";
+        }
+        await logAndReply(ctx, logMessage, answer);
     }
 }
 
-export async function addBirthday(ctx) {
-    let parameters = ctx.update.message.text.split(" ");
-    if (parameters.length == 4) {
-        if (isName(parameters[1]) && isName(parameters[2]) && isDate(parameters[3])) {
-            let firstName = capitalizeFirstLetter(parameters[1]);
-            let secondName = capitalizeFirstLetter(parameters[2]);
-            let birthdayDate = parameters[3];
-            let item = {
-                "event_id": randomUUID(),
-                "event_type": "Birthday",
-                "date": birthdayDate,
-                "first_name": firstName,
-                "second_name": secondName
-            };
-            console.log("Füge Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzu.");
-            let positiveAnswer = "Ich habe den Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzugefügt";
-            let positiveLogMessage = "Geburtstag hinzugefügt.";
-            let negativeAnswer = "Oh nein, da ist was schiefgelaufen...";
-            let negativeLogMessage = "Kann Item nicht hinzufügen. Error JSON:";
-            let positiveAction = async () => {
-                await logAndReply(ctx, positiveLogMessage, positiveAnswer);
-            };
-            let negativeAction = async (err) => {
-                await logAndReply(ctx, negativeLogMessage + JSON.stringify(err, null, 2), negativeAnswer);
-            };
-            await putItem(item, positiveAction, negativeAction);
-            console.log("Funktionsaufruf Datenbank ist durch");
-        } else {
-            ctx.reply("Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Vorname, dann Nachname dann ein Datum wie 31-12 oder 6-7. Und alle drei Parameter durch Leerzeichen getrennt.");
-        }
+function getCommandParameters(ctx: CommandContext) {
+    return ctx.update.message.text.split(" ");
+}
+
+function validateAddGarbageParameters(params: string[]): ValidationResult {
+    let validationResult = new ValidationResult();
+    if (params.length != 3) {
+        validationResult.errorMessage = "Ich brauche zwei Parameter: Müllfarbe und Datum (dd-mm). Bitte nochmal";
+        validationResult.hasErrors = true;
+    } else if (isGarbageType(params[1]) && isDate(params[2])) {
+        validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Müllfarbe, dann ein Datum wie 31-12 oder 6-7. Und beide Parameter durch Leerzeichen getrennt.";
+        validationResult.hasErrors = true;
     } else {
-        ctx.reply("Ich brauche drei Parameter: Vorname, Nachname und Datum (dd-mm). Bitte nochmal");
+        validationResult.hasErrors = false;
+    }
+    return validationResult;
+}
+
+function validateAddBirthdayParameters(params: string[]): ValidationResult {
+    let validationResult = new ValidationResult();
+    if (params.length != 4) {
+        validationResult.errorMessage = "Ich brauche drei Parameter: Vorname, Nachname und Datum (dd-mm). Bitte nochmal";
+        validationResult.hasErrors = true;
+    } else if (isName(params[1]) && isName(params[2]) && isDate(params[3])) {
+        validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Vorname, dann Nachname dann ein Datum wie 31-12 oder 6-7. Und alle drei Parameter durch Leerzeichen getrennt.";
+        validationResult.hasErrors = true;
+    } else {
+        validationResult.hasErrors = false;
+    }
+    return validationResult;
+}
+
+function createAddBirthdayItem(firstName: string, secondName: string, birthdayDate: string): BirthdayItem {
+    return {
+        "event_id": randomUUID(),
+        "event_type": "Birthday",
+        "date": birthdayDate,
+        "first_name": firstName,
+        "second_name": secondName
+    };
+}
+
+function createAddGarbageItem(garbageType: string, garbageDate: string): GarbageItem {
+    return {
+        "event_id": randomUUID(),
+        "event_type": "Garbage",
+        "date": garbageDate,
+        "garbage_type": normalizeGarbageType(garbageType)
+    };
+}
+
+export async function addBirthday(ctx: CommandContext) {
+    let parameters = getCommandParameters(ctx);
+    let validationResult = validateAddBirthdayParameters(parameters);
+    if (validationResult.hasErrors) {
+        await ctx.reply(validationResult.errorMessage);
+    } else {
+        let firstName = capitalizeFirstLetter(parameters[1]);
+        let secondName = capitalizeFirstLetter(parameters[2]);
+        let birthdayDate = parameters[3];
+        let item = createAddBirthdayItem(firstName, secondName, birthdayDate);
+
+        let isDuplicate = await isBirthdayDuplicate(item);
+        let answer: string;
+        let logMessage: string;
+
+        if (isDuplicate) {
+            answer = "Danke, aber diesen Eintrag habe ich bereits. Versuch's nochmal :)";
+            logMessage = "Duplikat gefunden. Eintrag wird nicht hinzugefügt.";
+        } else {
+            console.log("Füge Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzu.");
+            let operationResult = await putItem(item);
+            answer = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..."
+                : "Ich habe den Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzugefügt";
+            logMessage = operationResult.hasError
+                ? "Kann Item nicht hinzufügen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+                : "Geburtstag hinzugefügt.";
+        }
+        await logAndReply(ctx, logMessage, answer);
     }
 }
 
@@ -176,14 +378,15 @@ export function showBirthdaysForMonth() {
 export function showGarbagesThisMonth() {
 }
 
-export function showNextGarbages() {
-}
-
 export function deleteAllGarbage() {
 }
 
 export function deleteGarbage() {
 }
+
+export function showBirthdaysThisMonth() {}
+
+export function showGarbagesForMonth() {}
 
 export function generateHelpText(): string {
     return "Ich helfe dir, dich an Geburtstage und Mülltage zu erinnern.\n"
@@ -193,7 +396,6 @@ export function generateHelpText(): string {
 }
 
 export async function sendDailyBirthdayReminder(bot) {
-    // Get current date as String
     let today = new Date();
     let todayAsString = today.getDate() + "-" + (today.getMonth() + 1);
 
@@ -210,26 +412,18 @@ export async function sendDailyBirthdayReminder(bot) {
         }
     }
 
-    let negativeAction = (err) => console.error("Tabelle kann nicht gescannt werden. Fehler: ", JSON.stringify(err, null, 2));
-    let positiveAction = async (data) => {
+    try {
+        let scanResult = await scanTable(birthdayArgs);
+        let data = scanResult.data;
+        console.log("Daten waren: Datum heute: " + todayAsString);
         console.log("Scan erfolgreich.");
         console.log("Gescannte Elemente: " + data.ScannedCount);
         console.log("Heute gibt es " + data.Items.length + " Geburtstag(e).");
-        console.log("Daten waren: Datum heute: " + todayAsString);
-        for (const birthday of data.Items) {
-            for (const chat_id of chat_ids) {
-                try {
-                    let message = generateBirthdayReminderMessage(birthday);
-                    await bot.telegram.sendMessage(chat_id, message);
-                    console.log("Chat_ID " + chat_id + " wurde informiert.");
-                } catch (err) {
-                    console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
-                }
-            }
-        }
-
+        console.log("Scan erfolgreich.");
+        await sendBirthdayReminderMessages(bot, data);
+    } catch (err) {
+        console.error("Tabelle kann nicht gescannt werden. Fehler: ", JSON.stringify(err, null, 2));
     }
-    await scanTable(birthdayArgs, positiveAction, negativeAction);
 }
 
 function generateBirthdayReminderMessage(birthday) {
@@ -241,9 +435,14 @@ function generateBirthdayReminderMessage(birthday) {
         + "Vergiss nicht zu gratulieren 🎁";
 }
 
+function getTomorrow(): Date {
+    let date = new Date();
+    date.setDate(date.getDate() + 1);
+    return date;
+}
+
 export async function sendDailyGarbageReminder(bot) {
-    let tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    let tomorrow = getTomorrow();
     let tomorrowAsString = (tomorrow.getDate()) + "-" + (tomorrow.getMonth() + 1);
     let garbageArgs = {
         ProjectionExpression: "garbage_type",
@@ -258,27 +457,46 @@ export async function sendDailyGarbageReminder(bot) {
         }
     }
 
-    let negativeAction = (err) => console.error("Tabelle kann nicht gescannt werden. Fehler: ", JSON.stringify(err, null, 2));
-    let positiveAction = async (data) => {
+    try {
+        let scanResult = await scanTable(garbageArgs);
+        let data = scanResult.data;
+        console.log("Daten waren: Datum morgen: " + tomorrowAsString);
         console.log("Scan erfolgreich.");
         console.log("Gescannte Elemente: " + data.ScannedCount);
         console.log("Heute gibt es " + data.Items.length + " Mülldaten.");
-        console.log("Daten waren: Datum morgen: " + tomorrowAsString);
         console.log("Scan erfolgreich.");
-        for (const garbage of data.Items) {
-            for (const chat_id of chat_ids) {
-                try {
-                    let message = generateGarbageReminderMessage(garbage);
-                    await bot.telegram.sendMessage(chat_id, message);
-                    console.log("Chat_ID " + chat_id + " wurde informiert.");
-                } catch (err) {
-                    console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
-                }
+        await sendGarbageReminderMessages(bot, data);
+    } catch (err) {
+        console.error("Tabelle kann nicht gescannt werden. Fehler: ", JSON.stringify(err, null, 2));
+    }
+}
+
+export async function sendBirthdayReminderMessages(bot, data) {
+    for (const birthday of data.Items) {
+        for (const chat_id of chat_ids) {
+            try {
+                let message = generateBirthdayReminderMessage(birthday);
+                await bot.telegram.sendMessage(chat_id, message);
+                console.log("Chat_ID " + chat_id + " wurde informiert.");
+            } catch (err) {
+                console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
             }
         }
     }
+}
 
-    await scanTable(garbageArgs, positiveAction, negativeAction);
+async function sendGarbageReminderMessages(bot, data) {
+    for (const garbage of data.Items) {
+        for (const chat_id of chat_ids) {
+            try {
+                let message = generateGarbageReminderMessage(garbage);
+                await bot.telegram.sendMessage(chat_id, message);
+                console.log("Chat_ID " + chat_id + " wurde informiert.");
+            } catch (err) {
+                console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
+            }
+        }
+    }
 }
 
 function generateGarbageReminderMessage(garbage) {

@@ -28,13 +28,14 @@ bot.command("DeleteGarbage", commands.deleteGarbage);
 bot.command("DeleteAllGarbage", commands.deleteAllGarbage);
 
 // Spezielle Befehle, Datenbank Auslesen
-bot.hears(/Wer hat die nächsten [0-9]+ Tage Geburtstag/i, commands.showNextBirthdays);
-bot.hears(/Welcher Müll wird die nächsten [0-9]+ Tage geholt/i, commands.showNextGarbages);
-bot.hears(/Wann hat [a-z A-Z]+ Geburtstag/i, commands.showSpecificBirthday);
-bot.hears(/Was wird der nächste [a-z A-Z]+ Müll geholt/i, commands.showNextSpecificGarbage);
-bot.hears(/Wer hat diesen Monat Geburtstag/i, commands.showGarbagesThisMonth);
-bot.hears(/Wer hat nächsten Monat Geburtstag/i, commands.showGarbagesNextMonth);
-bot.hears(/Wer hat im [a-zA-Z]+ Geburtstag/i, commands.showBirthdaysForMonth);
+bot.command("BirthdaysNextDays", commands.showNextBirthdays);
+bot.command("GarbageNextDays", commands.showNextGarbages);
+bot.command("BirthdayForName", commands.showSpecificBirthday);
+bot.command("NextGarbageForType", commands.showNextSpecificGarbage);
+bot.command("BirthdaysThisMonth", commands.showBirthdaysThisMonth);
+bot.command("GarbagesThisMonth", commands.showGarbagesThisMonth);
+bot.command("BirthdaysForMonth", commands.showBirthdaysForMonth);
+bot.command("GarbagesForMonth", commands.showGarbagesForMonth);
 
 
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!

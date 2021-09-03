@@ -1,10 +1,28 @@
 import * as AWS from "aws-sdk";
+import {PromiseResult} from "aws-sdk/lib/request";
 
 let docClient = new AWS.DynamoDB.DocumentClient({region: "eu-central-1"});
 const tableName = process.env.BOT_EVENTS_TABLE;
 
-type DataReceiver = (data) => void;
-type EmptyReceiver = () => void;
+export class AWSOperationResult {
+    hasError: boolean;
+    error: AWS.AWSError;
+    data: PromiseResult<AWS.DynamoDB.DocumentClient.ScanOutput, AWS.AWSError>;
+
+    constructor(error?: any, data?: any) {
+        if (!error) {
+            this.hasError = false;
+        } else {
+            this.hasError = true;
+            this.error = error;
+        }
+
+        if (data) {
+            this.data = data;
+        }
+    }
+}
+
 type ScanArgs = {
     FilterExpression: string,
     ExpressionAttributeNames: any,
@@ -27,23 +45,23 @@ function createScanParams(args: ScanArgs) {
     };
 }
 
-export async function putItem(item, positiveAction: EmptyReceiver, failAction: DataReceiver) {
+export async function putItem(item): Promise<AWSOperationResult>{
     let params = createPutParams(item);
     try {
         await docClient.put(params).promise();
-        positiveAction();
+        return new AWSOperationResult();
     } catch (err) {
-        failAction(err);
+        return new AWSOperationResult(err);
     }
 }
 
-export async function scanTable(args, positiveAction: DataReceiver, failAction: DataReceiver) {
+export async function scanTable(args){
     let params = createScanParams(args);
     try {
         const data = await docClient.scan(params).promise();
-        await positiveAction(data);
+        return new AWSOperationResult(null, data)
     } catch (err) {
-        await failAction(err);
+        return new AWSOperationResult(err);
     }
 }
 
