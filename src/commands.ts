@@ -130,8 +130,17 @@ export async function showNextBirthdays(ctx: CommandContext): Promise<any> {
         });
         console.log("Object: " + JSON.stringify(titleObject));
 
+        let filterExpression = "#Type = :birthday and (";
+
+        for (let i = 0; i < Object.keys(titleObject).length / 80; i++) {
+            filterExpression += i == 0 ? "" : " or";
+            filterExpression += "#Datum IN (" + Object.keys(titleObject).slice(i*80, (i+1)*80) + ")";
+        }
+
+        filterExpression += ")";
+
         const scanArgs = {
-            FilterExpression: "#Type = :birthday and #Datum IN (" + Object.keys(titleObject).toString() + ")",
+            FilterExpression: filterExpression,
             ExpressionAttributeNames: {
                 "#Datum": "date",
                 "#Type": "event_type"

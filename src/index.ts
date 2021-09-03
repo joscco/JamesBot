@@ -29,7 +29,7 @@ bot.command("DeleteAllGarbage", commands.deleteAllGarbages);
 
 // Spezielle Befehle, Datenbank Auslesen
 bot.command("BirthdaysNextDays", commands.showNextBirthdays);
-bot.command("GarbageNextDays", commands.showNextGarbages);
+bot.command("GarbagesNextDays", commands.showNextGarbages);
 bot.command("BirthdayForName", commands.showSpecificBirthday);
 bot.command("NextGarbageForType", commands.showNextSpecificGarbage);
 bot.command("BirthdaysThisMonth", commands.showBirthdaysThisMonth);
@@ -37,9 +37,7 @@ bot.command("GarbagesThisMonth", commands.showGarbagesThisMonth);
 bot.command("BirthdaysForMonth", commands.showBirthdaysForMonth);
 bot.command("GarbagesForMonth", commands.showGarbagesForMonth);
 
-
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!
-
 // Main Lambda function
 exports.mainHandler = async function (event) {
     try {
