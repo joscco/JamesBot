@@ -64,10 +64,29 @@ export async function putItem(item): Promise<AWSOperationResult>{
     }
 }
 
+function compareDates(a: { date: string }, b: { date: string }): number {
+    let aArray = a.date.split("-");
+    let bArray = b.date.split("-");
+    if (aArray[0] > bArray[0]) {
+        return 1;
+    } else if (aArray[0] < bArray[0]) {
+        return -1;
+    } else {
+        if (aArray[1] > bArray[1]) {
+            return 1;
+        } else if (aArray[1] < bArray[1]) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+}
+
 export async function scanTable(args){
     let params = createScanParams(args);
     try {
         const data = await docClient.scan(params).promise();
+        data.Items = data.Items.sort(compareDates);
         return new AWSOperationResult(null, data)
     } catch (err) {
         return new AWSOperationResult(err);
