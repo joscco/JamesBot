@@ -412,7 +412,7 @@ export async function deleteBirthday(ctx: CommandContext) {
 
         await logAndReply(ctx, logMessage, answer);
 
-        if (operationResult.hasError && data.Count > 0) {
+        if (!operationResult.hasError && data.Count > 0) {
             for (const row of data.Items) {
                 try {
                     await deleteItem(row.event_id);
