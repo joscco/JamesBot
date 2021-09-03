@@ -67,14 +67,18 @@ export async function putItem(item): Promise<AWSOperationResult>{
 function compareDates(a: { date: string }, b: { date: string }): number {
     let aArray = a.date.split("-");
     let bArray = b.date.split("-");
-    if (aArray[0] > bArray[0]) {
+    let aMonth = parseInt(aArray[1]);
+    let bMonth = parseInt(bArray[1]);
+    let aDay = parseInt(aArray[0]);
+    let bDay = parseInt(bArray[0]);
+    if (aMonth > bMonth) {
         return 1;
-    } else if (aArray[0] < bArray[0]) {
+    } else if (aMonth < bMonth) {
         return -1;
     } else {
-        if (aArray[1] > bArray[1]) {
+        if (aDay > bDay) {
             return 1;
-        } else if (aArray[1] < bArray[1]) {
+        } else if (aDay < bDay) {
             return -1;
         } else {
             return 0;
