@@ -90,6 +90,20 @@ function validateShowNextGarbagesParameters(params: string[]): ValidationResult 
     return validationResult;
 }
 
+function validateDeleteGarbageParameters(params: string[]): ValidationResult {
+    let validationResult = new ValidationResult();
+    if (params.length != 2) {
+        validationResult.errorMessage = "Ich brauche einen Parameter: Datum, an dem die Mülltermine gelöscht werden sollen.";
+        validationResult.hasErrors = true;
+    } else if (!isDate(params[1])) {
+        validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche ein Datum.";
+        validationResult.hasErrors = true;
+    } else {
+        validationResult.hasErrors = false;
+    }
+    return validationResult;
+}
+
 export async function showNextBirthdays(ctx: CommandContext): Promise<any> {
     let parameters = getCommandParameters(ctx);
     let validationResult = validateShowNextBirthdaysParameters(parameters);
@@ -375,6 +389,28 @@ export async function addBirthday(ctx: CommandContext) {
     }
 }
 
+export function showSpecificBirthday() {
+}
+
+export function showNextSpecificGarbage() {
+}
+
+export function showGarbagesNextMonth() {
+}
+
+export function showBirthdaysForMonth() {
+}
+
+export function showGarbagesThisMonth() {
+}
+
+export function showBirthdaysThisMonth() {
+}
+
+export function showGarbagesForMonth() {
+}
+
+
 export async function deleteBirthday(ctx: CommandContext) {
     let parameters = getCommandParameters(ctx);
     let validationResult = validateDeleteBirthdayParameters(parameters);
@@ -425,31 +461,88 @@ export async function deleteBirthday(ctx: CommandContext) {
     }
 }
 
-export function showSpecificBirthday() {
+export async function deleteAllGarbages(ctx: CommandContext) {
+    const scanArgs = {
+        FilterExpression: "#Type = :garbage",
+        ExpressionAttributeNames: {
+            "#Type": "event_type",
+        },
+        ExpressionAttributeValues: {
+            ":garbage": "Garbage",
+        }
+    };
+
+    let answer: string;
+    let logMessage: string;
+
+    let operationResult = await scanTable(scanArgs);
+    let data = operationResult.data;
+    answer = operationResult.hasError
+        ? "Oh nein, da ist was schiefgelaufen..."
+        : "Ich habe " + data.Count + " Mülldaten gefunden. Alle diese Daten werde ich löschen.";
+    logMessage = operationResult.hasError
+        ? "Kann Geburtstag nicht löschen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+        : "Mülldaten werden gelöscht.";
+
+    await logAndReply(ctx, logMessage, answer);
+
+    if (!operationResult.hasError && data.Count > 0) {
+        for (const row of data.Items) {
+            try {
+                await deleteItem(row.event_id);
+                await ctx.reply("Mülldatum am " + row.date + " gelöscht.");
+            } catch (err) {
+                await ctx.reply("Beim Löschen ist etwas fehlgeschlagen. Error: " + err);
+            }
+        }
+    }
 }
 
-export function showNextSpecificGarbage() {
-}
+export async function deleteGarbage(ctx: CommandContext) {
+    let parameters = getCommandParameters(ctx);
+    let validationResult = validateDeleteGarbageParameters(parameters);
+    if (validationResult.hasErrors) {
+        await ctx.reply(validationResult.errorMessage);
+    } else {
+        let date = parameters[1];
 
-export function showGarbagesNextMonth() {
-}
+        const scanArgs = {
+            FilterExpression: "#Type = :birthday and #Date = :date",
+            ExpressionAttributeNames: {
+                "#Type": "event_type",
+                "#Date": "date"
+            },
+            ExpressionAttributeValues: {
+                ":birthday": "Birthday",
+                ":date": date
+            }
+        };
 
-export function showBirthdaysForMonth() {
-}
+        let answer: string;
+        let logMessage: string;
 
-export function showGarbagesThisMonth() {
-}
+        let operationResult = await scanTable(scanArgs);
+        let data = operationResult.data;
+        answer = operationResult.hasError
+            ? "Oh nein, da ist was schiefgelaufen..."
+            : "Am " + date + " sind " + data.Count + " Mülltermine gespeichert. Alle diese Termine werde ich löschen.";
+        logMessage = operationResult.hasError
+            ? "Kann Mülldaten nicht löschen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+            : "Mülldaten am " + date + " werden gelöscht.";
 
-export function deleteAllGarbage() {
-}
+        await logAndReply(ctx, logMessage, answer);
 
-export function deleteGarbage() {
-}
-
-export function showBirthdaysThisMonth() {
-}
-
-export function showGarbagesForMonth() {
+        if (!operationResult.hasError && data.Count > 0) {
+            for (const row of data.Items) {
+                try {
+                    await deleteItem(row.event_id);
+                    await ctx.reply("Müll (" + row.garbage_type + ") am " + row.date + " gelöscht.");
+                } catch (err) {
+                    await ctx.reply("Beim Löschen ist etwas fehlgeschlagen. Error: " + err);
+                }
+            }
+        }
+    }
 }
 
 export function generateHelpText(): string {

@@ -25,7 +25,7 @@ bot.command("AddBirthday", commands.addBirthday);
 bot.command("AddGarbage", commands.addGarbage)
 bot.command("DeleteBirthday", commands.deleteBirthday);
 bot.command("DeleteGarbage", commands.deleteGarbage);
-bot.command("DeleteAllGarbage", commands.deleteAllGarbage);
+bot.command("DeleteAllGarbage", commands.deleteAllGarbages);
 
 // Spezielle Befehle, Datenbank Auslesen
 bot.command("BirthdaysNextDays", commands.showNextBirthdays);
