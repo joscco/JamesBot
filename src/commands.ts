@@ -67,7 +67,7 @@ function validateShowNextBirthdaysParameters(params: string[]): ValidationResult
     if (params.length != 2) {
         validationResult.errorMessage = "Ich brauche einen Parameter: Anzahl der nächsten Tage, in denen ich nach Geburtstagen suchen soll.";
         validationResult.hasErrors = true;
-    } else if (isNonNegativeNumber(params[1])) {
+    } else if (!isNonNegativeNumber(params[1])) {
         validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche eine Zahl >= 0.";
         validationResult.hasErrors = true;
     } else {
@@ -81,7 +81,7 @@ function validateShowNextGarbagesParameters(params: string[]): ValidationResult 
     if (params.length != 2) {
         validationResult.errorMessage = "Ich brauche einen Parameter: Anzahl der nächsten Tage, in denen ich nach Mülldaten suchen soll.";
         validationResult.hasErrors = true;
-    } else if (isNonNegativeNumber(params[1])) {
+    } else if (!isNonNegativeNumber(params[1])) {
         validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche eine Zahl >= 0.";
         validationResult.hasErrors = true;
     } else {
