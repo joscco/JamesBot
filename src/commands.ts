@@ -1,5 +1,5 @@
 import {randomUUID} from "crypto";
-import {putItem, scanTable} from "./aws_utils";
+import {deleteItem, putItem, scanTable} from "./aws_utils";
 import {Context, NarrowedContext} from "telegraf";
 import {Update} from "typegram";
 import {MountMap} from "telegraf/typings/telegram-types";
@@ -286,7 +286,7 @@ function validateAddGarbageParameters(params: string[]): ValidationResult {
     if (params.length != 3) {
         validationResult.errorMessage = "Ich brauche zwei Parameter: Müllfarbe und Datum (dd-mm). Bitte nochmal";
         validationResult.hasErrors = true;
-    } else if (isGarbageType(params[1]) && isDate(params[2])) {
+    } else if (!(isGarbageType(params[1]) && isDate(params[2]))) {
         validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Müllfarbe, dann ein Datum wie 31-12 oder 6-7. Und beide Parameter durch Leerzeichen getrennt.";
         validationResult.hasErrors = true;
     } else {
@@ -300,7 +300,7 @@ function validateAddBirthdayParameters(params: string[]): ValidationResult {
     if (params.length != 4) {
         validationResult.errorMessage = "Ich brauche drei Parameter: Vorname, Nachname und Datum (dd-mm). Bitte nochmal";
         validationResult.hasErrors = true;
-    } else if (isName(params[1]) && isName(params[2]) && isDate(params[3])) {
+    } else if (!(isName(params[1]) && isName(params[2]) && isDate(params[3]))) {
         validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Vorname, dann Nachname dann ein Datum wie 31-12 oder 6-7. Und alle drei Parameter durch Leerzeichen getrennt.";
         validationResult.hasErrors = true;
     } else {
@@ -308,6 +308,21 @@ function validateAddBirthdayParameters(params: string[]): ValidationResult {
     }
     return validationResult;
 }
+
+function validateDeleteBirthdayParameters(params: string[]): ValidationResult {
+    let validationResult = new ValidationResult();
+    if (params.length != 3) {
+        validationResult.errorMessage = "Ich brauche zwei Parameter: Vorname und Nachname. Bitte nochmal";
+        validationResult.hasErrors = true;
+    } else if (!(isName(params[1]) && isName(params[2]))) {
+        validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Vorname, dann Nachname. Und beide Parameter durch Leerzeichen getrennt.";
+        validationResult.hasErrors = true;
+    } else {
+        validationResult.hasErrors = false;
+    }
+    return validationResult;
+}
+
 
 function createAddBirthdayItem(firstName: string, secondName: string, birthdayDate: string): BirthdayItem {
     return {
@@ -360,7 +375,54 @@ export async function addBirthday(ctx: CommandContext) {
     }
 }
 
-export function deleteBirthday() {
+export async function deleteBirthday(ctx: CommandContext) {
+    let parameters = getCommandParameters(ctx);
+    let validationResult = validateDeleteBirthdayParameters(parameters);
+    if (validationResult.hasErrors) {
+        await ctx.reply(validationResult.errorMessage);
+    } else {
+        let firstName = capitalizeFirstLetter(parameters[1]);
+        let secondName = capitalizeFirstLetter(parameters[2]);
+
+        const scanArgs = {
+            FilterExpression: "#Type = :birthday and #FirstName = :firstName and #SecondName = :secondName",
+            ExpressionAttributeNames: {
+                "#Type": "event_type",
+                "#FirstName": "first_name",
+                "#SecondName": "second_name"
+            },
+            ExpressionAttributeValues: {
+                ":birthday": "Birthday",
+                ":firstName": firstName,
+                ":secondName": secondName
+            }
+        };
+
+        let answer: string;
+        let logMessage: string;
+
+        let operationResult = await scanTable(scanArgs);
+        let data = operationResult.data;
+        answer = operationResult.hasError
+            ? "Oh nein, da ist was schiefgelaufen..."
+            : "Die genannte Person (" + firstName + " " + secondName + ") ist " + data.Count + " mal gespeichert. Alle diese Daten werde ich löschen.";
+        logMessage = operationResult.hasError
+            ? "Kann Geburtstag nicht löschen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+            : "Geburtstag gelöscht.";
+
+        await logAndReply(ctx, logMessage, answer);
+
+        if (operationResult.hasError && data.Count > 0) {
+            for (const row of data.Items) {
+                try {
+                    await deleteItem(row.event_id);
+                    await ctx.reply("Datum " + row.date + " gelöscht.");
+                } catch (err) {
+                    await ctx.reply("Beim Löschen ist etwas fehlgeschlagen. Error: " + err);
+                }
+            }
+        }
+    }
 }
 
 export function showSpecificBirthday() {
@@ -384,9 +446,11 @@ export function deleteAllGarbage() {
 export function deleteGarbage() {
 }
 
-export function showBirthdaysThisMonth() {}
+export function showBirthdaysThisMonth() {
+}
 
-export function showGarbagesForMonth() {}
+export function showGarbagesForMonth() {
+}
 
 export function generateHelpText(): string {
     return "Ich helfe dir, dich an Geburtstage und Mülltage zu erinnern.\n"

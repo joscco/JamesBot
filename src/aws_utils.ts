@@ -45,6 +45,15 @@ function createScanParams(args: ScanArgs) {
     };
 }
 
+function createDeleteItemParams(event_id: string) {
+    return {
+        TableName: tableName,
+        Key: {
+            "event_id": event_id
+        }
+    };
+}
+
 export async function putItem(item): Promise<AWSOperationResult>{
     let params = createPutParams(item);
     try {
@@ -59,6 +68,16 @@ export async function scanTable(args){
     let params = createScanParams(args);
     try {
         const data = await docClient.scan(params).promise();
+        return new AWSOperationResult(null, data)
+    } catch (err) {
+        return new AWSOperationResult(err);
+    }
+}
+
+export async function deleteItem(event_id: string){
+    let params = createDeleteItemParams(event_id);
+    try {
+        const data = await docClient.delete(params).promise();
         return new AWSOperationResult(null, data)
     } catch (err) {
         return new AWSOperationResult(err);
