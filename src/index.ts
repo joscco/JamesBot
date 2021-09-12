@@ -1,5 +1,13 @@
 import {Telegraf} from "telegraf";
-import * as commands from "./commands";
+import * as commands from "./command_utils";
+import {
+    AddBirthdayCommand,
+    AddGarbageCommand,
+    DeleteAllGarbagesCommand,
+    DeleteBirthdayCommand,
+    DeleteGarbageCommand, ShowNextBirthdaysCommand, ShowNextGarbagesCommand
+} from "./commands";
+import {JamesCommand} from "./command_utils";
 
 const botToken = process.env.BOT_TOKEN;
 
@@ -7,35 +15,36 @@ if (botToken === undefined) {
     throw Error("BOT_TOKEN must be defined!");
 }
 
+let commandList: JamesCommand[] = [
+    new AddBirthdayCommand(),
+    new AddGarbageCommand(),
+    new DeleteBirthdayCommand(),
+    new DeleteGarbageCommand(),
+    new DeleteAllGarbagesCommand(),
+    new ShowNextBirthdaysCommand(),
+    new ShowNextGarbagesCommand(),
+    // new ShowBirthdayForNameCommand(),
+    // new ShowNextGarbageForTypeCommand(),
+    // new ShowBirthdaysThisMonthCommand(),
+    // new ShowGarbagesThisMonthCommand(),
+    // new ShowBirthdaysForMonthCommand(),
+    // new ShowGarbagesForMonthCommand()
+];
+
 const bot = new Telegraf(botToken, {
     telegram: {
         webhookReply: true
     }
 });
-
 // Allgemeine Befehle
 bot.start((ctx) => ctx.reply("Hi, ich bin JamesBot! Hast du neue Daten für mich?"));
 bot.hears(/^(hey|hi)$/i, (ctx) => ctx.reply("Hey!"));
 bot.hears(/^Wer hat die Kokosnuss geklaut[?]*$/i, (ctx) => ctx.reply("Du, du Schlingel... 😏"));
-bot.help(ctx => ctx.reply(commands.generateHelpText()));
+bot.help(ctx => ctx.reply(commands.generateHelpText(commandList)));
+
 bot.on('sticker', ctx => ctx.reply("😅"));
 
-// Spezielle Befehle, Datenbank Schreiben
-bot.command("AddBirthday", commands.addBirthday);
-bot.command("AddGarbage", commands.addGarbage)
-bot.command("DeleteBirthday", commands.deleteBirthday);
-bot.command("DeleteGarbage", commands.deleteGarbage);
-bot.command("DeleteAllGarbage", commands.deleteAllGarbages);
-
-// Spezielle Befehle, Datenbank Auslesen
-bot.command("BirthdaysNextDays", commands.showNextBirthdays);
-bot.command("GarbagesNextDays", commands.showNextGarbages);
-bot.command("BirthdayForName", commands.showSpecificBirthday);
-bot.command("NextGarbageForType", commands.showNextSpecificGarbage);
-bot.command("BirthdaysThisMonth", commands.showBirthdaysThisMonth);
-bot.command("GarbagesThisMonth", commands.showGarbagesThisMonth);
-bot.command("BirthdaysForMonth", commands.showBirthdaysForMonth);
-bot.command("GarbagesForMonth", commands.showGarbagesForMonth);
+commandList.forEach(jamesCommand => bot.command(jamesCommand.commandString, jamesCommand.execute));
 
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!
 // Main Lambda function
