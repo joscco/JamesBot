@@ -1,6 +1,6 @@
 import {deleteItem, putItem, scanTable} from "./aws_utils";
 import {
-    BirthdayItem, buildShowNextDatesScanArgs,
+    BirthdayItem, buildShowMonthDatesScanArgs, buildShowNextDatesScanArgs,
     capitalizeFirstLetter,
     CommandContext, findNearestDate,
     GarbageItem,
@@ -9,12 +9,12 @@ import {
     isBirthdayDuplicate,
     isDate,
     isGarbageDuplicate,
-    isGarbageType,
+    isGarbageType, isMonthName,
     isName,
     isNonNegativeNumber,
     JamesCommand,
-    logAndReply,
-    normalizeGarbageType,
+    logAndReply, monthNameToNumber,
+    normalizeGarbageType, normalizeMonthName,
     ValidationResult
 } from "./command_utils";
 import {randomUUID} from "crypto";
@@ -547,3 +547,157 @@ export class ShowNextGarbageForTypeCommand implements JamesCommand {
         }
     }
 }
+
+export class ShowBirthdaysThisMonthCommand implements JamesCommand {
+    commandString = "ShowBirthdaysThisMonth";
+    description = "Geburtstage in diesem Monat anzeigen.";
+    useExample = "/ShowBirthdaysThisMonth";
+
+    async execute(ctx: CommandContext) {
+        let currentMonthNumber = (new Date()).getMonth() + 1;
+        let scanArgs = buildShowMonthDatesScanArgs(currentMonthNumber, "Birthday");
+        let operationResult = await scanTable(scanArgs);
+        let data = operationResult.data;
+        let answer = operationResult.hasError
+            ? "Oh nein, da ist was schiefgelaufen..."
+            : this.buildAnswer(data);
+        let logMessage = operationResult.hasError
+            ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+            : "Geburtstage gefunden.";
+        await logAndReply(ctx, logMessage, answer);
+    }
+
+    buildAnswer(data) {
+        let message = "Folgende Geburtstage gibt es diesen Monat:\n";
+        data.Items.forEach(row => {
+            message += row.first_name + " " + row.second_name + " am " + row.date + "\n";
+        })
+        return message;
+    }
+}
+
+export class ShowGarbagesThisMonthCommand implements JamesCommand {
+    commandString = "ShowGarbagesThisMonth";
+    description = "Mülldaten in diesem Monat anzeigen.";
+    useExample = "/ShowGarbagesThisMonth";
+
+    async execute(ctx: CommandContext) {
+        let currentMonthNumber = (new Date()).getMonth() + 1;
+        let scanArgs = buildShowMonthDatesScanArgs(currentMonthNumber, "Birthday");
+        let operationResult = await scanTable(scanArgs);
+        let data = operationResult.data;
+        let answer = operationResult.hasError
+            ? "Oh nein, da ist was schiefgelaufen..."
+            : this.buildAnswer(data);
+        let logMessage = operationResult.hasError
+            ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+            : "Mülldatum gefunden.";
+        await logAndReply(ctx, logMessage, answer);
+    }
+
+    buildAnswer(data) {
+        let message = "Folgende Mülldaten gibt es diesen Monat:\n";
+        data.Items.forEach(row => {
+            message += getGarbageDescription(normalizeGarbageType(row.garbage_type)) + " am " + row.date + "\n";
+        })
+        return message;
+    }
+}
+
+export class ShowBirthdaysForMonthCommand implements JamesCommand {
+    commandString = "ShowBirthdaysForMonth";
+    description = "Alle Geburtsdaten in einem bestimmten Monat anzeigen.";
+    useExample = "/ShowBirthdaysForMonth Januar";
+
+    async execute(ctx: CommandContext) {
+        let parameters = getCommandParameters(ctx);
+        let validationResult = this.validateParameters(parameters);
+        if (validationResult.hasErrors) {
+            await ctx.reply(validationResult.errorMessage);
+        } else {
+            let monthName = normalizeMonthName(parameters[0]);
+            let scanArgs = buildShowMonthDatesScanArgs(monthNameToNumber(monthName), "Birthday");
+            let operationResult = await scanTable(scanArgs);
+            let data = operationResult.data;
+            let answer = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..."
+                : this.buildAnswer(data, monthName);
+            let logMessage = operationResult.hasError
+                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+                : "Mülldatum gefunden.";
+            await logAndReply(ctx, logMessage, answer);
+        }
+    }
+
+    buildAnswer(data, monthName: string) {
+        let message = "Folgende Geburtstage gibt es für " + monthName + ":\n";
+        data.Items.forEach(row => {
+            message += row.first_name + " " + row.second_name + " am " + row.date + "\n";
+        })
+        return message;
+    }
+
+    validateParameters(params: string[]): ValidationResult {
+        let validationResult = new ValidationResult();
+        if (params.length != 1) {
+            validationResult.errorMessage = "Ich brauche einen Parameter: Einen Monat.";
+            validationResult.hasErrors = true;
+        } else if (!isMonthName(params[0])) {
+            validationResult.errorMessage = "Hmm... Der Parameter sieht nicht richtig aus. Denk dran: Ich brauche einen Monat.";
+            validationResult.hasErrors = true;
+        } else {
+            validationResult.hasErrors = false;
+        }
+        return validationResult;
+    }
+}
+
+export class ShowGarbagesForMonthCommand implements JamesCommand {
+    commandString = "ShowGarbagesForMonth";
+    description = "Mülldaten in einem bestimmten Monat anzeigen.";
+    useExample = "/ShowGarbagesForMonth Juni";
+
+    async execute(ctx: CommandContext) {
+        let parameters = getCommandParameters(ctx);
+        let validationResult = this.validateParameters(parameters);
+        if (validationResult.hasErrors) {
+            await ctx.reply(validationResult.errorMessage);
+        } else {
+            let monthName = normalizeMonthName(parameters[0]);
+            let scanArgs = buildShowMonthDatesScanArgs(monthNameToNumber(monthName), "Garbage");
+            let operationResult = await scanTable(scanArgs);
+            let data = operationResult.data;
+            let answer = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..."
+                : this.buildAnswer(data, monthName);
+            let logMessage = operationResult.hasError
+                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+                : "Mülldaten gefunden.";
+            await logAndReply(ctx, logMessage, answer);
+        }
+    }
+
+    buildAnswer(data, monthName: string) {
+        let message = "Folgende Mülldaten gibt es für " + monthName + ":\n";
+        data.Items.forEach(row => {
+            message += getGarbageDescription(normalizeGarbageType(row.garbage_type)) + " am " + row.date + "\n";
+        })
+        return message;
+    }
+
+    validateParameters(params: string[]): ValidationResult {
+        let validationResult = new ValidationResult();
+        if (params.length != 1) {
+            validationResult.errorMessage = "Ich brauche einen Parameter: Einen Monat.";
+            validationResult.hasErrors = true;
+        } else if (!isMonthName(params[0])) {
+            validationResult.errorMessage = "Hmm... Der Parameter sieht nicht richtig aus. Denk dran: Ich brauche einen Monat.";
+            validationResult.hasErrors = true;
+        } else {
+            validationResult.hasErrors = false;
+        }
+        return validationResult;
+    }
+}
+
+

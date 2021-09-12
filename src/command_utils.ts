@@ -40,6 +40,7 @@ const dateRegex = /^(([1-9]|[12][0-9]|3[01])-([1-9]|1[012]))$/
 const nameRegex = /^[a-zäöüßA-ZÄÖÜ-]+$/
 const nonNegativeNumberRegex = /^[0-9]+$/
 const garbageTypeRegex = /^(schwarz|gelb|grün|braun)+$/i
+const monthNameRegex = /^(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)+$/i
 
 export function isDate(input: string): boolean {
     return dateRegex.test(input);
@@ -57,7 +58,15 @@ export function isGarbageType(input: string): boolean {
     return garbageTypeRegex.test(input);
 }
 
+export function isMonthName(input: string): boolean {
+    return monthNameRegex.test(input);
+}
+
 export function normalizeGarbageType(input: string): string {
+    return capitalizeFirstLetter(input);
+}
+
+export function normalizeMonthName(input: string): string {
     return capitalizeFirstLetter(input);
 }
 
@@ -67,6 +76,37 @@ export function capitalizeFirstLetter(input: string): string {
 
 export function getDateAsString(date: Date): string {
     return (date.getDate()) + "-" + (date.getMonth() + 1);
+}
+
+export function monthNameToNumber(monthName: string): number {
+    switch (monthName) {
+        case "Januar":
+            return 1;
+        case "Februar":
+            return 2;
+        case "März":
+            return 3;
+        case "April":
+            return 4;
+        case "Mai":
+            return 5;
+        case "Juni":
+            return 6;
+        case "Juli":
+            return 7;
+        case "August":
+            return 8;
+        case "September":
+            return 9;
+        case "Oktober":
+            return 10;
+        case "November":
+            return 11;
+        case "Dezember":
+            return 12;
+        default:
+            return 0;
+    }
 }
 
 export function logAndReply(ctx, logMessage: string, answer: string) {
@@ -239,6 +279,40 @@ async function sendGarbageReminderMessages(bot, data) {
                 console.log("Etwas ist beim Senden der Nachricht schief gelaufen.")
             }
         }
+    }
+}
+
+export function buildShowMonthDatesScanArgs(monthNumber: number, dateType: string) {
+    let stringDays = [];
+    for (let n = 1; n <= 31; n++) {
+        stringDays.push(n + "-" + monthNumber);
+    }
+
+    let titleObject = {":type": dateType};
+    let index = 0;
+    stringDays.forEach(date => {
+        index++;
+        let titleKey = ":datum" + index;
+        titleObject[titleKey.toString()] = date;
+    });
+    console.log("Object: " + JSON.stringify(titleObject));
+
+    let filterExpression = "#Type = :type and (";
+
+    for (let i = 0; i < Object.keys(titleObject).length / 80; i++) {
+        filterExpression += i == 0 ? "" : " or";
+        filterExpression += "#Datum IN (" + Object.keys(titleObject).slice(i * 80, (i + 1) * 80) + ")";
+    }
+
+    filterExpression += ")";
+
+    return {
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: {
+            "#Datum": "date",
+            "#Type": "event_type"
+        },
+        ExpressionAttributeValues: titleObject
     }
 }
 
