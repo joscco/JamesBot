@@ -124,13 +124,12 @@ export function getCommandParameters(ctx: CommandContext): string[] {
 
 export function generateHelpText(commandList: JamesCommand[]): string {
     let helpText = "Ich helfe dir, dich an Geburtstage und Mülltage zu erinnern.\n"
-        + "Die Müllerinnerungen kommen immer einen Abend vorher, die Geburtstagserinnerungen "
-        + "kommen morgens. \n\n"
-        + "Über folgende Befehle kannst du mich steuern:\n";
+        + "Die Müllerinnerungen kommen immer einen Abend vorher, die für Geburtstage kommen morgens. \n\n"
+        + "Über folgende Befehle kannst du mich steuern:\n\n";
     commandList.forEach(command => {
-        helpText += command.commandString
-            + " (" + command.useExample + "):\n"
-            + command.description + "\n";
+        helpText += "/" + command.commandString + "\n"
+            + "(z.B. " + command.useExample + ")\n"
+            + command.description + "\n\n";
     })
     return helpText
 }
