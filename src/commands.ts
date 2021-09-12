@@ -1,11 +1,11 @@
 import {deleteItem, putItem, scanTable} from "./aws_utils";
 import {
-    BirthdayItem,
+    BirthdayItem, buildShowNextDatesScanArgs,
     capitalizeFirstLetter,
-    CommandContext,
+    CommandContext, findNearestDate,
     GarbageItem,
     getCommandParameters,
-    getDateAsString, getGarbageDescription,
+    getGarbageDescription,
     isBirthdayDuplicate,
     isDate,
     isGarbageDuplicate,
@@ -27,9 +27,7 @@ export class AddBirthdayCommand implements JamesCommand {
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
-        if (validationResult.hasErrors) {
-            await ctx.reply(validationResult.errorMessage);
-        } else {
+        if (!validationResult.hasErrors) {
             let firstName = capitalizeFirstLetter(parameters[0]);
             let secondName = capitalizeFirstLetter(parameters[1]);
             let birthdayDate = parameters[2];
@@ -53,6 +51,8 @@ export class AddBirthdayCommand implements JamesCommand {
                     : "Geburtstag hinzugefügt.";
             }
             await logAndReply(ctx, logMessage, answer);
+        } else {
+            await ctx.reply(validationResult.errorMessage);
         }
     }
 
@@ -79,7 +79,6 @@ export class AddBirthdayCommand implements JamesCommand {
             "second_name": secondName
         };
     }
-
 }
 
 export class AddGarbageCommand implements JamesCommand {
@@ -140,7 +139,6 @@ export class AddGarbageCommand implements JamesCommand {
             "garbage_type": normalizeGarbageType(garbageType)
         };
     }
-
 }
 
 export class DeleteGarbageCommand implements JamesCommand {
@@ -336,43 +334,7 @@ export class ShowNextBirthdaysCommand implements JamesCommand {
             await ctx.reply(validationResult.errorMessage);
         } else {
             let numberOfDays = parseInt(parameters[0]);
-            let stringDays = [];
-            let today = new Date();
-
-            for (let n = 0; n <= numberOfDays; n++) {
-                let dateInNDays = new Date();
-                console.log("dateInNDays: " + dateInNDays);
-                dateInNDays.setDate(today.getDate() + n);
-                stringDays.push(getDateAsString(dateInNDays));
-            }
-
-            let titleObject = {":birthday": "Birthday"};
-            let index = 0;
-            stringDays.forEach(date => {
-                index++;
-                let titleKey = ":datum" + index;
-                titleObject[titleKey.toString()] = date;
-            });
-            console.log("Object: " + JSON.stringify(titleObject));
-
-            let filterExpression = "#Type = :birthday and (";
-
-            for (let i = 0; i < Object.keys(titleObject).length / 80; i++) {
-                filterExpression += i == 0 ? "" : " or";
-                filterExpression += "#Datum IN (" + Object.keys(titleObject).slice(i * 80, (i + 1) * 80) + ")";
-            }
-
-            filterExpression += ")";
-
-            const scanArgs = {
-                FilterExpression: filterExpression,
-                ExpressionAttributeNames: {
-                    "#Datum": "date",
-                    "#Type": "event_type"
-                },
-                ExpressionAttributeValues: titleObject
-            };
-
+            let scanArgs = buildShowNextDatesScanArgs(numberOfDays, "Birthday");
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
@@ -420,43 +382,7 @@ export class ShowNextGarbagesCommand implements JamesCommand {
             await ctx.reply(validationResult.errorMessage);
         } else {
             let numberOfDays = parseInt(parameters[0]);
-            let stringDays = [];
-            let today = new Date();
-
-            for (let n = 0; n <= numberOfDays; n++) {
-                let dateInNDays = new Date();
-                console.log("dateInNDays: " + dateInNDays);
-                dateInNDays.setDate(today.getDate() + n);
-                stringDays.push(getDateAsString(dateInNDays));
-            }
-
-            let titleObject = {":garbage": "Garbage"};
-            let index = 0;
-            stringDays.forEach(date => {
-                index++;
-                let titleKey = ":datum" + index;
-                titleObject[titleKey.toString()] = date;
-            });
-            console.log("Object: " + JSON.stringify(titleObject));
-
-            let filterExpression = "#Type = :garbage and (";
-
-            for (let i = 0; i < Object.keys(titleObject).length / 80; i++) {
-                filterExpression += i == 0 ? "" : " or";
-                filterExpression += "#Datum IN (" + Object.keys(titleObject).slice(i * 80, (i + 1) * 80) + ")";
-            }
-
-            filterExpression += ")";
-
-            const scanArgs = {
-                FilterExpression: filterExpression,
-                ExpressionAttributeNames: {
-                    "#Datum": "date",
-                    "#Type": "event_type"
-                },
-                ExpressionAttributeValues: titleObject
-            };
-
+            let scanArgs = buildShowNextDatesScanArgs(numberOfDays, "Garbage");
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
@@ -489,5 +415,135 @@ export class ShowNextGarbagesCommand implements JamesCommand {
             validationResult.hasErrors = false;
         }
         return validationResult;
+    }
+}
+
+export class ShowBirthdayForNameCommand implements JamesCommand {
+    commandString = "ShowBirthdayForName";
+    description = "Geburtsdatum einer bestimmten Person ausgeben.";
+    useExample = "/ShowBirthdayForName John Doe";
+
+    async execute(ctx: CommandContext) {
+        let parameters = getCommandParameters(ctx);
+        let validationResult = this.validateParameters(parameters);
+        if (validationResult.hasErrors) {
+            await ctx.reply(validationResult.errorMessage);
+        } else {
+            let firstName = parameters[0];
+            let lastName = parameters[1];
+            let scanArgs = this.buildScanArgs(firstName, lastName, "Birthday");
+            let operationResult = await scanTable(scanArgs);
+            let data = operationResult.data;
+            let answer = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..."
+                : this.buildAnswer(data, firstName, lastName);
+            let logMessage = operationResult.hasError
+                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+                : "Geburtstag gefunden.";
+            await logAndReply(ctx, logMessage, answer);
+        }
+    }
+
+    buildAnswer(data, firstName: string, lastName: string) {
+        if (data.Count > 0) {
+            let date = "";
+           data.Items.forEach(row => {
+               date += row.date;
+           })
+           return firstName + " " + lastName + " hat am " + date + " Geburtstag. Wuff!"
+        }
+        return "Ich finde leider niemanden in meiner Datenbank, der so heißt :("
+    }
+
+    validateParameters(params: string[]): ValidationResult {
+        let validationResult = new ValidationResult();
+        if (params.length != 2) {
+            validationResult.errorMessage = "Ich brauche zwei Parameter: Einen Vor- und einen Nachnamen.";
+            validationResult.hasErrors = true;
+        } else if (!isName(params[0]) || !isName(params[1])) {
+            validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche einen Vornamen und einen Nachnamen.";
+            validationResult.hasErrors = true;
+        } else {
+            validationResult.hasErrors = false;
+        }
+        return validationResult;
+    }
+
+    buildScanArgs(firstName: string, secondName: string, birthday: string) {
+        return {
+            FilterExpression: "#Type = :type and #FirstName = :firstName and #SecondName = :secondName",
+            ExpressionAttributeNames: {
+                "#FirstName": "first_name",
+                "#SecondName": "second_name",
+                "#Type": "event_type"
+            },
+            ExpressionAttributeValues: {
+                ":firstName": firstName,
+                ":secondName": secondName,
+                ":type": birthday
+            }
+        }
+    }
+}
+
+export class ShowNextGarbageForTypeCommand implements JamesCommand {
+    commandString = "ShowNextGarbageForType";
+    description = "Nächstes Datum für eine bestimmte Müllfarbe anzeigen.";
+    useExample = "/ShowNextGarbageForType gelb";
+
+    async execute(ctx: CommandContext) {
+        let parameters = getCommandParameters(ctx);
+        let validationResult = this.validateParameters(parameters);
+        if (validationResult.hasErrors) {
+            await ctx.reply(validationResult.errorMessage);
+        } else {
+            let garbageType = normalizeGarbageType(parameters[0]);
+            let scanArgs = this.buildScanArgs(garbageType, "Garbage");
+            let operationResult = await scanTable(scanArgs);
+            let data = operationResult.data;
+            let answer = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..."
+                : this.buildAnswer(data, garbageType);
+            let logMessage = operationResult.hasError
+                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
+                : "Mülldatum gefunden.";
+            await logAndReply(ctx, logMessage, answer);
+        }
+    }
+
+    buildAnswer(data, garbageType: string) {
+        if (data.Count > 0) {
+            let nearestDate = findNearestDate(data.Items);
+            return "Der nächste Müll (" + garbageType + ") wird am " +  nearestDate + " geholt. Wuff!"
+        }
+        return "Ich finde keinen solchen Mülleintrag in meiner Datenbank :("
+    }
+
+    validateParameters(params: string[]): ValidationResult {
+        let validationResult = new ValidationResult();
+        if (params.length != 1) {
+            validationResult.errorMessage = "Ich brauche einen Parameter: Eine Müllfarbe.";
+            validationResult.hasErrors = true;
+        } else if (!isGarbageType(params[0])) {
+            validationResult.errorMessage = "Hmm... Der Parameter sieht nicht richtig aus. Denk dran: Ich brauche eine Müllfarbe.";
+            validationResult.hasErrors = true;
+        } else {
+            validationResult.hasErrors = false;
+        }
+        return validationResult;
+    }
+
+    buildScanArgs(garbageType: string, birthday: string) {
+        return {
+            FilterExpression: "#Type = :type and #GarbageType = :garbageType",
+            ExpressionAttributeNames: {
+                "#GarbageType": "garbage_type",
+                "#Type": "event_type"
+            },
+            ExpressionAttributeValues: {
+                ":garbageType": garbageType,
+                ":type": birthday
+            }
+        }
     }
 }

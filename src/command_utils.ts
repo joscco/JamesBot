@@ -178,9 +178,15 @@ function getTomorrow(): Date {
     return date;
 }
 
+function getTomorrowAsString(): string {
+    return getDateAsString(getTomorrow());
+}
+
+function getTodayAsString(): string {
+    return getDateAsString(new Date());
+}
+
 export async function sendDailyGarbageReminder(bot) {
-    let tomorrow = getTomorrow();
-    let tomorrowAsString = (tomorrow.getDate()) + "-" + (tomorrow.getMonth() + 1);
     let garbageArgs = {
         ProjectionExpression: "garbage_type",
         FilterExpression: "#Datum = :tomorrow and #Type = :garbage",
@@ -189,7 +195,7 @@ export async function sendDailyGarbageReminder(bot) {
             "#Type": "event_type"
         },
         ExpressionAttributeValues: {
-            ":tomorrow": tomorrowAsString,
+            ":tomorrow": getTomorrowAsString(),
             ":garbage": "Garbage"
         }
     }
@@ -197,7 +203,7 @@ export async function sendDailyGarbageReminder(bot) {
     try {
         let scanResult = await scanTable(garbageArgs);
         let data = scanResult.data;
-        console.log("Daten waren: Datum morgen: " + tomorrowAsString);
+        console.log("Daten waren: Datum morgen: " + getTomorrowAsString());
         console.log("Scan erfolgreich.");
         console.log("Gescannte Elemente: " + data.ScannedCount);
         console.log("Heute gibt es " + data.Items.length + " Mülldaten.");
@@ -236,6 +242,45 @@ async function sendGarbageReminderMessages(bot, data) {
     }
 }
 
+export function buildShowNextDatesScanArgs(numberOfDays: number, dateType: string) {
+    let stringDays = [];
+    let today = new Date();
+
+    for (let n = 0; n <= numberOfDays; n++) {
+        let dateInNDays = new Date();
+        console.log("dateInNDays: " + dateInNDays);
+        dateInNDays.setDate(today.getDate() + n);
+        stringDays.push(getDateAsString(dateInNDays));
+    }
+
+    let titleObject = {":type": dateType};
+    let index = 0;
+    stringDays.forEach(date => {
+        index++;
+        let titleKey = ":datum" + index;
+        titleObject[titleKey.toString()] = date;
+    });
+    console.log("Object: " + JSON.stringify(titleObject));
+
+    let filterExpression = "#Type = :type and (";
+
+    for (let i = 0; i < Object.keys(titleObject).length / 80; i++) {
+        filterExpression += i == 0 ? "" : " or";
+        filterExpression += "#Datum IN (" + Object.keys(titleObject).slice(i * 80, (i + 1) * 80) + ")";
+    }
+
+    filterExpression += ")";
+
+    return {
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: {
+            "#Datum": "date",
+            "#Type": "event_type"
+        },
+        ExpressionAttributeValues: titleObject
+    }
+}
+
 function generateGarbageReminderMessage(garbage) {
     let type = garbage.garbage_type;
     return "Morgen wird "
@@ -257,6 +302,33 @@ export function getGarbageDescription(type: string) {
     } else {
         return "";
     }
+}
+
+export function findNearestDate(itemList) {
+    let minValue = 365;
+    let minDate = "none";
+    let today = getTodayAsString()
+    itemList.forEach(row => {
+        if (subtract(row.date, today) <= minValue) {
+            minValue = subtract(row.date, today);
+            minDate = row.date;
+        }
+    });
+    return minDate;
+}
+
+function subtract(date1, date2): number {
+    let date1Tokens = date1.split("-");
+    let date2Tokens = date2.split("-");
+    let day1 = parseInt(date1Tokens[0]);
+    let month1 = parseInt(date1Tokens[1]);
+    let day2 = parseInt(date2Tokens[0]);
+    let month2 = parseInt(date2Tokens[1]);
+
+    let distance = (month1 - month2) * 30 + (day1 - day2);
+    if (distance <= 0) {
+        return 365 - distance;
+    } else return distance;
 }
 
 export function getGarbageEmoji(type: string) {

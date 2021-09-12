@@ -5,7 +5,11 @@ import {
     AddGarbageCommand,
     DeleteAllGarbagesCommand,
     DeleteBirthdayCommand,
-    DeleteGarbageCommand, ShowNextBirthdaysCommand, ShowNextGarbagesCommand
+    DeleteGarbageCommand,
+    ShowBirthdayForNameCommand,
+    ShowNextBirthdaysCommand,
+    ShowNextGarbageForTypeCommand,
+    ShowNextGarbagesCommand
 } from "./commands";
 import {JamesCommand} from "./command_utils";
 
@@ -23,8 +27,8 @@ const commandList: JamesCommand[] = [
     new DeleteAllGarbagesCommand(),
     new ShowNextBirthdaysCommand(),
     new ShowNextGarbagesCommand(),
-    // new ShowBirthdayForNameCommand(),
-    // new ShowNextGarbageForTypeCommand(),
+    new ShowBirthdayForNameCommand(),
+    new ShowNextGarbageForTypeCommand(),
     // new ShowBirthdaysThisMonthCommand(),
     // new ShowGarbagesThisMonthCommand(),
     // new ShowBirthdaysForMonthCommand(),
