@@ -15,7 +15,7 @@ if (botToken === undefined) {
     throw Error("BOT_TOKEN must be defined!");
 }
 
-let commandList: JamesCommand[] = [
+const commandList: JamesCommand[] = [
     new AddBirthdayCommand(),
     new AddGarbageCommand(),
     new DeleteBirthdayCommand(),
@@ -45,7 +45,9 @@ bot.hears(/^(hilfe|help)$/i, ctx => ctx.reply(commands.generateHelpText(commandL
 
 bot.on('sticker', ctx => ctx.reply("😅"));
 
-commandList.forEach(jamesCommand => bot.command(jamesCommand.commandString, jamesCommand.execute));
+for (let jamesCommand of commandList) {
+    bot.command(jamesCommand.commandString, (ctx) => jamesCommand.execute(ctx));
+}
 
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!
 // Main Lambda function

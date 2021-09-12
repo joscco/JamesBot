@@ -10,14 +10,12 @@ export class ValidationResult {
     errorMessage: string;
 }
 
-export abstract class JamesCommand {
+export interface JamesCommand {
     commandString: string;
     useExample: string;
     description: string;
 
-    abstract execute(ctx: CommandContext): Promise<void>;
-
-    abstract validateParameters(params: string[]): ValidationResult;
+    execute(ctx: CommandContext): Promise<void>;
 }
 
 export type BirthdayItem = {

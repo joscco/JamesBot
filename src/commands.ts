@@ -19,7 +19,7 @@ import {
 } from "./command_utils";
 import {randomUUID} from "crypto";
 
-export class AddBirthdayCommand extends JamesCommand {
+export class AddBirthdayCommand implements JamesCommand {
     commandString = "AddBirthday";
     description = "Geburtstagsdatum hinzufügen.";
     useExample = "/AddBirthday Max Muster 27-3";
@@ -30,9 +30,9 @@ export class AddBirthdayCommand extends JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let firstName = capitalizeFirstLetter(parameters[1]);
-            let secondName = capitalizeFirstLetter(parameters[2]);
-            let birthdayDate = parameters[3];
+            let firstName = capitalizeFirstLetter(parameters[0]);
+            let secondName = capitalizeFirstLetter(parameters[1]);
+            let birthdayDate = parameters[2];
             let item = this.createAddBirthdayItem(firstName, secondName, birthdayDate);
 
             let isDuplicate = await isBirthdayDuplicate(item);
@@ -58,10 +58,10 @@ export class AddBirthdayCommand extends JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 4) {
+        if (params.length != 3) {
             validationResult.errorMessage = "Ich brauche drei Parameter: Vorname, Nachname und Datum (dd-mm). Bitte nochmal";
             validationResult.hasErrors = true;
-        } else if (!(isName(params[1]) && isName(params[2]) && isDate(params[3]))) {
+        } else if (!(isName(params[0]) && isName(params[1]) && isDate(params[2]))) {
             validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Vorname, dann Nachname dann ein Datum wie 31-12 oder 6-7. Und alle drei Parameter durch Leerzeichen getrennt.";
             validationResult.hasErrors = true;
         } else {
@@ -82,7 +82,7 @@ export class AddBirthdayCommand extends JamesCommand {
 
 }
 
-export class AddGarbageCommand extends JamesCommand {
+export class AddGarbageCommand implements JamesCommand {
     commandString = "AddGarbage";
     description = "Mülldatum hinzufügen.";
     useExample = "/AddGarbage gelb 14-7";
@@ -93,8 +93,8 @@ export class AddGarbageCommand extends JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let garbageType = parameters[1];
-            let garbageDate = parameters[2];
+            let garbageType = parameters[0];
+            let garbageDate = parameters[1];
             let item = this.createAddGarbageItem(garbageType, garbageDate);
             let isDuplicate = await isGarbageDuplicate(item);
 
@@ -120,10 +120,10 @@ export class AddGarbageCommand extends JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 3) {
+        if (params.length != 2) {
             validationResult.errorMessage = "Ich brauche zwei Parameter: Müllfarbe und Datum (dd-mm). Bitte nochmal";
             validationResult.hasErrors = true;
-        } else if (!(isGarbageType(params[1]) && isDate(params[2]))) {
+        } else if (!(isGarbageType(params[0]) && isDate(params[1]))) {
             validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Müllfarbe, dann ein Datum wie 31-12 oder 6-7. Und beide Parameter durch Leerzeichen getrennt.";
             validationResult.hasErrors = true;
         } else {
@@ -143,7 +143,7 @@ export class AddGarbageCommand extends JamesCommand {
 
 }
 
-export class DeleteGarbageCommand extends JamesCommand {
+export class DeleteGarbageCommand implements JamesCommand {
     commandString = "DeleteGarbage";
     description = "Mülldatum entfernen.";
     useExample = "/DeleteGarbage 14-3";
@@ -154,7 +154,7 @@ export class DeleteGarbageCommand extends JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let date = parameters[1];
+            let date = parameters[0];
 
             const scanArgs = {
                 FilterExpression: "#Type = :birthday and #Date = :date",
@@ -197,10 +197,10 @@ export class DeleteGarbageCommand extends JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 2) {
+        if (params.length != 1) {
             validationResult.errorMessage = "Ich brauche einen Parameter: Datum, an dem die Mülltermine gelöscht werden sollen.";
             validationResult.hasErrors = true;
-        } else if (!isDate(params[1])) {
+        } else if (!isDate(params[0])) {
             validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche ein Datum.";
             validationResult.hasErrors = true;
         } else {
@@ -210,7 +210,7 @@ export class DeleteGarbageCommand extends JamesCommand {
     }
 }
 
-export class DeleteAllGarbagesCommand extends JamesCommand {
+export class DeleteAllGarbagesCommand implements JamesCommand {
     commandString = "DeleteAllGarbages";
     description = "Alle gespeicherten Mülldaten entfernen.";
     useExample = "/DeleteAllGarbages";
@@ -251,13 +251,9 @@ export class DeleteAllGarbagesCommand extends JamesCommand {
             }
         }
     }
-
-    validateParameters(params: string[]): ValidationResult {
-        return undefined;
-    }
 }
 
-export class DeleteBirthdayCommand extends JamesCommand {
+export class DeleteBirthdayCommand implements JamesCommand {
     commandString = "DeleteBirthday";
     description = "Geburtstag entfernen.";
     useExample = "/DeleteBirthday Hannah Meier 13-2";
@@ -268,8 +264,8 @@ export class DeleteBirthdayCommand extends JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let firstName = capitalizeFirstLetter(parameters[1]);
-            let secondName = capitalizeFirstLetter(parameters[2]);
+            let firstName = capitalizeFirstLetter(parameters[0]);
+            let secondName = capitalizeFirstLetter(parameters[1]);
 
             const scanArgs = {
                 FilterExpression: "#Type = :birthday and #FirstName = :firstName and #SecondName = :secondName",
@@ -314,10 +310,10 @@ export class DeleteBirthdayCommand extends JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 3) {
+        if (params.length != 2) {
             validationResult.errorMessage = "Ich brauche zwei Parameter: Vorname und Nachname. Bitte nochmal";
             validationResult.hasErrors = true;
-        } else if (!(isName(params[1]) && isName(params[2]))) {
+        } else if (!(isName(params[0]) && isName(params[1]))) {
             validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Vorname, dann Nachname. Und beide Parameter durch Leerzeichen getrennt.";
             validationResult.hasErrors = true;
         } else {
@@ -328,7 +324,7 @@ export class DeleteBirthdayCommand extends JamesCommand {
 }
 
 // Ab hier neu
-export class ShowNextBirthdaysCommand extends JamesCommand {
+export class ShowNextBirthdaysCommand implements JamesCommand {
     commandString = "ShowNextBirthdays";
     description = "Geburtstage in den nächsten n Tagen anzeigen.";
     useExample = "/ShowNextBirthdays 17";
@@ -339,7 +335,7 @@ export class ShowNextBirthdaysCommand extends JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let numberOfDays = parseInt(parameters[1]);
+            let numberOfDays = parseInt(parameters[0]);
             let stringDays = [];
             let today = new Date();
 
@@ -399,10 +395,10 @@ export class ShowNextBirthdaysCommand extends JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 2) {
+        if (params.length != 1) {
             validationResult.errorMessage = "Ich brauche einen Parameter: Anzahl der nächsten Tage, in denen ich nach Geburtstagen suchen soll.";
             validationResult.hasErrors = true;
-        } else if (!isNonNegativeNumber(params[1])) {
+        } else if (!isNonNegativeNumber(params[0])) {
             validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche eine Zahl >= 0.";
             validationResult.hasErrors = true;
         } else {
@@ -412,7 +408,7 @@ export class ShowNextBirthdaysCommand extends JamesCommand {
     }
 }
 
-export class ShowNextGarbagesCommand extends JamesCommand {
+export class ShowNextGarbagesCommand implements JamesCommand {
     commandString = "ShowNextGarbages";
     description = "Mülldaten in den nächsten n Tagen anzeigen.";
     useExample = "/ShowNextGarbages 14";
@@ -423,7 +419,7 @@ export class ShowNextGarbagesCommand extends JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let numberOfDays = parseInt(parameters[1]);
+            let numberOfDays = parseInt(parameters[0]);
             let stringDays = [];
             let today = new Date();
 
@@ -483,10 +479,10 @@ export class ShowNextGarbagesCommand extends JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 2) {
+        if (params.length != 1) {
             validationResult.errorMessage = "Ich brauche einen Parameter: Anzahl der nächsten Tage, in denen ich nach Mülldaten suchen soll.";
             validationResult.hasErrors = true;
-        } else if (!isNonNegativeNumber(params[1])) {
+        } else if (!isNonNegativeNumber(params[0])) {
             validationResult.errorMessage = "Hmm... Der Parameter sehen nicht richtig aus. Denk dran: Ich brauche eine Zahl >= 0.";
             validationResult.hasErrors = true;
         } else {
