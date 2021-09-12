@@ -583,7 +583,7 @@ export class ShowGarbagesThisMonthCommand implements JamesCommand {
 
     async execute(ctx: CommandContext) {
         let currentMonthNumber = (new Date()).getMonth() + 1;
-        let scanArgs = buildShowMonthDatesScanArgs(currentMonthNumber, "Birthday");
+        let scanArgs = buildShowMonthDatesScanArgs(currentMonthNumber, "Garbage");
         let operationResult = await scanTable(scanArgs);
         let data = operationResult.data;
         let answer = operationResult.hasError
