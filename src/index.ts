@@ -48,6 +48,7 @@ bot.start((ctx) => ctx.reply("Hi, ich bin JamesBot! Hast du neue Daten für mich
 bot.hears(/^(hey|hi)$/i, (ctx) => ctx.reply("Hey!"));
 bot.hears(/^Wer hat die Kokosnuss geklaut[?]*$/i, (ctx) => ctx.reply("Du, du Schlingel... 😏"));
 bot.help(ctx => ctx.reply(commands.generateHelpText(commandList)));
+bot.hears(/^Mein Chat$/i, (ctx) => ctx.reply(JSON.stringify(ctx.update.message)));
 bot.hears(/^(hilfe|help)$/i, ctx => ctx.reply(commands.generateHelpText(commandList)));
 
 bot.on('sticker', ctx => ctx.reply("😅"));
