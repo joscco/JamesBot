@@ -14,7 +14,7 @@ import {
     ShowNextGarbageForTypeCommand,
     ShowNextGarbagesCommand
 } from "./commands";
-import {isValidID, JamesCommand} from "./command_utils";
+import {hasValidChatID, JamesCommand} from "./command_utils";
 
 const botToken = process.env.BOT_TOKEN;
 
@@ -48,20 +48,18 @@ bot.start((ctx) => ctx.reply("Hi, ich bin JamesBot! Hast du neue Daten für mich
 bot.hears(/^(hey|hi)$/i, (ctx) => ctx.reply("Hey!"));
 bot.hears(/^Wer hat die Kokosnuss geklaut[?]*$/i, (ctx) => ctx.reply("Du, du Schlingel... 😏"));
 bot.help(ctx => ctx.reply(commands.generateHelpText(commandList)));
-bot.hears(/^Mein Chat$/i, (ctx) => {
-    let chat_id = ctx.update.message.from.id.toString();
-    if (isValidID(chat_id)) {
-        ctx.reply("Du darfst mir Nachrichten schicken.");
-    } else {
-        ctx.reply("Von dir lass ich mir gar nichts sagen.");
-    }
-});
 bot.hears(/^(hilfe|help)$/i, ctx => ctx.reply(commands.generateHelpText(commandList)));
 
 bot.on('sticker', ctx => ctx.reply("😅"));
 
 for (let jamesCommand of commandList) {
-    bot.command(jamesCommand.commandString, (ctx) => jamesCommand.execute(ctx));
+    bot.command(jamesCommand.commandString, async (ctx) => {
+        if (hasValidChatID(ctx)) {
+            await jamesCommand.execute(ctx);
+        } else {
+            await ctx.reply("Dir gehorche ich nicht.");
+        }
+    });
 }
 
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!

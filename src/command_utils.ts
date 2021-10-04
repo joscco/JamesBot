@@ -42,6 +42,10 @@ const nonNegativeNumberRegex = /^[0-9]+$/
 const garbageTypeRegex = /^(schwarz|gelb|grün|braun)+$/i
 const monthNameRegex = /^(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)+$/i
 
+export function hasValidChatID(ctx: CommandContext): boolean {
+    return isValidID(ctx.update.message.from.id.toString());
+}
+
 export function isValidID(input: string): boolean {
     return chat_ids.includes(input);
 }
