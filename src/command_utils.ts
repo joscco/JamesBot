@@ -42,6 +42,9 @@ const nonNegativeNumberRegex = /^[0-9]+$/
 const garbageTypeRegex = /^(schwarz|gelb|grün|braun)+$/i
 const monthNameRegex = /^(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)+$/i
 
+export function isValidID(input: string): boolean {
+    return chat_ids.includes(input);
+}
 export function isDate(input: string): boolean {
     return dateRegex.test(input);
 }

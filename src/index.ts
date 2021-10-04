@@ -14,7 +14,7 @@ import {
     ShowNextGarbageForTypeCommand,
     ShowNextGarbagesCommand
 } from "./commands";
-import {JamesCommand} from "./command_utils";
+import {isValidID, JamesCommand} from "./command_utils";
 
 const botToken = process.env.BOT_TOKEN;
 
@@ -48,7 +48,14 @@ bot.start((ctx) => ctx.reply("Hi, ich bin JamesBot! Hast du neue Daten für mich
 bot.hears(/^(hey|hi)$/i, (ctx) => ctx.reply("Hey!"));
 bot.hears(/^Wer hat die Kokosnuss geklaut[?]*$/i, (ctx) => ctx.reply("Du, du Schlingel... 😏"));
 bot.help(ctx => ctx.reply(commands.generateHelpText(commandList)));
-bot.hears(/^Mein Chat$/i, (ctx) => ctx.reply(JSON.stringify(ctx.update.message)));
+bot.hears(/^Mein Chat$/i, (ctx) => {
+    let chat_id = ctx.update.message.from.id.toString();
+    if (isValidID(chat_id)) {
+        ctx.reply("Du darfst mir Nachrichten schicken.");
+    } else {
+        ctx.reply("Von dir lass ich mir gar nichts sagen.");
+    }
+});
 bot.hears(/^(hilfe|help)$/i, ctx => ctx.reply(commands.generateHelpText(commandList)));
 
 bot.on('sticker', ctx => ctx.reply("😅"));
