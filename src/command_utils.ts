@@ -172,8 +172,8 @@ export function generateHelpText(commandList: JamesCommand[]): string {
         + "Die Müllerinnerungen kommen immer einen Abend vorher, die für Geburtstage kommen morgens. \n\n"
         + "Über folgende Befehle kannst du mich steuern:\n\n";
     commandList.forEach(command => {
-        helpText += "/" + command.commandString + "\n"
-            + "(z.B. " + command.useExample + ")\n"
+        helpText += "/" + command.commandString + " "
+            + "(z.B. " + command.useExample + "):\n"
             + command.description + "\n\n";
     })
     return helpText

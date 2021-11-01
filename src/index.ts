@@ -57,6 +57,13 @@ for (let jamesCommand of commandList) {
             await ctx.reply("Dir gehorche ich nicht.");
         }
     });
+    bot.hears(new RegExp("^" + jamesCommand.commandString + " $", "i"), async (ctx) => {
+        if (hasValidChatID(ctx)) {
+            await jamesCommand.execute(ctx);
+        } else {
+            await ctx.reply("Dir gehorche ich nicht.");
+        }
+    });
 }
 
 // Hier muss die webhook-Option eingefügt werden, sonst wird der Webhook immer wieder auf null gesetzt!
