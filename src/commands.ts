@@ -20,9 +20,9 @@ import {
 import {randomUUID} from "crypto";
 
 export class AddBirthdayCommand implements JamesCommand {
-    commandString = "AddBirthday";
+    commandString = "ab";
     description = "Geburtstagsdatum hinzufügen.";
-    useExample = "/AddBirthday Max Muster 27-3";
+    useExample = "/ab Max Muster 27-3";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -82,9 +82,9 @@ export class AddBirthdayCommand implements JamesCommand {
 }
 
 export class AddGarbageCommand implements JamesCommand {
-    commandString = "AddGarbage";
+    commandString = "ag";
     description = "Mülldatum hinzufügen.";
-    useExample = "/AddGarbage gelb 14-7";
+    useExample = "/ag gelb 14-7";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -142,9 +142,9 @@ export class AddGarbageCommand implements JamesCommand {
 }
 
 export class DeleteGarbageCommand implements JamesCommand {
-    commandString = "DeleteGarbage";
+    commandString = "dg";
     description = "Mülldatum entfernen.";
-    useExample = "/DeleteGarbage 14-3";
+    useExample = "/dg 14-3";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -209,9 +209,9 @@ export class DeleteGarbageCommand implements JamesCommand {
 }
 
 export class DeleteAllGarbagesCommand implements JamesCommand {
-    commandString = "DeleteAllGarbages";
+    commandString = "dag";
     description = "Alle gespeicherten Mülldaten entfernen.";
-    useExample = "/DeleteAllGarbages";
+    useExample = "/dag";
 
     async execute(ctx: CommandContext) {
         const scanArgs = {
@@ -252,9 +252,9 @@ export class DeleteAllGarbagesCommand implements JamesCommand {
 }
 
 export class DeleteBirthdayCommand implements JamesCommand {
-    commandString = "DeleteBirthday";
+    commandString = "db";
     description = "Geburtstag entfernen.";
-    useExample = "/DeleteBirthday Hannah Meier 13-2";
+    useExample = "/db Hannah Meier 13-2";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -323,9 +323,9 @@ export class DeleteBirthdayCommand implements JamesCommand {
 
 // Ab hier neu
 export class ShowNextBirthdaysCommand implements JamesCommand {
-    commandString = "ShowNextBirthdays";
+    commandString = "snb";
     description = "Geburtstage in den nächsten n Tagen anzeigen.";
-    useExample = "/ShowNextBirthdays 17";
+    useExample = "/snb 17";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -371,9 +371,9 @@ export class ShowNextBirthdaysCommand implements JamesCommand {
 }
 
 export class ShowNextGarbagesCommand implements JamesCommand {
-    commandString = "ShowNextGarbages";
+    commandString = "sng";
     description = "Mülldaten in den nächsten n Tagen anzeigen.";
-    useExample = "/ShowNextGarbages 14";
+    useExample = "/sng 14";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -419,9 +419,9 @@ export class ShowNextGarbagesCommand implements JamesCommand {
 }
 
 export class ShowBirthdayForNameCommand implements JamesCommand {
-    commandString = "ShowBirthdayForName";
+    commandString = "sbfn";
     description = "Geburtsdatum einer bestimmten Person ausgeben.";
-    useExample = "/ShowBirthdayForName John Doe";
+    useExample = "/sbfn John Doe";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -487,9 +487,9 @@ export class ShowBirthdayForNameCommand implements JamesCommand {
 }
 
 export class ShowNextGarbageForTypeCommand implements JamesCommand {
-    commandString = "ShowNextGarbageForType";
+    commandString = "sgft";
     description = "Nächstes Datum für eine bestimmte Müllfarbe anzeigen.";
-    useExample = "/ShowNextGarbageForType gelb";
+    useExample = "/sgft gelb";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -548,66 +548,10 @@ export class ShowNextGarbageForTypeCommand implements JamesCommand {
     }
 }
 
-export class ShowBirthdaysThisMonthCommand implements JamesCommand {
-    commandString = "ShowBirthdaysThisMonth";
-    description = "Geburtstage in diesem Monat anzeigen.";
-    useExample = "/ShowBirthdaysThisMonth";
-
-    async execute(ctx: CommandContext) {
-        let currentMonthNumber = (new Date()).getMonth() + 1;
-        let scanArgs = buildShowMonthDatesScanArgs(currentMonthNumber, "Birthday");
-        let operationResult = await scanTable(scanArgs);
-        let data = operationResult.data;
-        let answer = operationResult.hasError
-            ? "Oh nein, da ist was schiefgelaufen..."
-            : this.buildAnswer(data);
-        let logMessage = operationResult.hasError
-            ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-            : "Geburtstage gefunden.";
-        await logAndReply(ctx, logMessage, answer);
-    }
-
-    buildAnswer(data) {
-        let message = "Folgende Geburtstage gibt es diesen Monat:\n";
-        data.Items.forEach(row => {
-            message += row.first_name + " " + row.second_name + " am " + row.date + "\n";
-        })
-        return message;
-    }
-}
-
-export class ShowGarbagesThisMonthCommand implements JamesCommand {
-    commandString = "ShowGarbagesThisMonth";
-    description = "Mülldaten in diesem Monat anzeigen.";
-    useExample = "/ShowGarbagesThisMonth";
-
-    async execute(ctx: CommandContext) {
-        let currentMonthNumber = (new Date()).getMonth() + 1;
-        let scanArgs = buildShowMonthDatesScanArgs(currentMonthNumber, "Garbage");
-        let operationResult = await scanTable(scanArgs);
-        let data = operationResult.data;
-        let answer = operationResult.hasError
-            ? "Oh nein, da ist was schiefgelaufen..."
-            : this.buildAnswer(data);
-        let logMessage = operationResult.hasError
-            ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-            : "Mülldatum gefunden.";
-        await logAndReply(ctx, logMessage, answer);
-    }
-
-    buildAnswer(data) {
-        let message = "Folgende Mülldaten gibt es diesen Monat:\n";
-        data.Items.forEach(row => {
-            message += getGarbageDescription(normalizeGarbageType(row.garbage_type)) + " am " + row.date + "\n";
-        })
-        return message;
-    }
-}
-
 export class ShowBirthdaysForMonthCommand implements JamesCommand {
-    commandString = "ShowBirthdaysForMonth";
-    description = "Alle Geburtsdaten in einem bestimmten Monat anzeigen.";
-    useExample = "/ShowBirthdaysForMonth Januar";
+    commandString = "sbfm";
+    description = "Alle Geburtsdaten in einem bestimmten Monat anzeigen (default ist der jetzige Monat).";
+    useExample = "/sbfm Januar";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -615,8 +559,16 @@ export class ShowBirthdaysForMonthCommand implements JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let monthName = normalizeMonthName(parameters[0]);
-            let scanArgs = buildShowMonthDatesScanArgs(monthNameToNumber(monthName), "Birthday");
+            let monthName;
+            let monthNumber;
+            if (parameters[0] != null) {
+                monthName = normalizeMonthName(parameters[0]);
+                monthNumber = monthNameToNumber(monthName);
+            } else {
+                monthName = "diesen Monat";
+                monthNumber = (new Date()).getMonth() + 1;
+            }
+            let scanArgs = buildShowMonthDatesScanArgs(monthNumber, "Birthday");
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
@@ -639,10 +591,10 @@ export class ShowBirthdaysForMonthCommand implements JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 1) {
-            validationResult.errorMessage = "Ich brauche einen Parameter: Einen Monat.";
+        if (params.length > 1) {
+            validationResult.errorMessage = "Ich brauche maximal einen Parameter: Einen Monat.";
             validationResult.hasErrors = true;
-        } else if (!isMonthName(params[0])) {
+        } else if (params[0] != null && !isMonthName(params[0])) {
             validationResult.errorMessage = "Hmm... Der Parameter sieht nicht richtig aus. Denk dran: Ich brauche einen Monat.";
             validationResult.hasErrors = true;
         } else {
@@ -653,9 +605,9 @@ export class ShowBirthdaysForMonthCommand implements JamesCommand {
 }
 
 export class ShowGarbagesForMonthCommand implements JamesCommand {
-    commandString = "ShowGarbagesForMonth";
-    description = "Mülldaten in einem bestimmten Monat anzeigen.";
-    useExample = "/ShowGarbagesForMonth Juni";
+    commandString = "sgfm";
+    description = "Mülldaten für Monat anzeigen (default ist der jetzige Monat).";
+    useExample = "/sgfm Juni";
 
     async execute(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
@@ -663,8 +615,16 @@ export class ShowGarbagesForMonthCommand implements JamesCommand {
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let monthName = normalizeMonthName(parameters[0]);
-            let scanArgs = buildShowMonthDatesScanArgs(monthNameToNumber(monthName), "Garbage");
+            let monthName;
+            let monthNumber;
+            if (parameters[0] != null) {
+                monthName = normalizeMonthName(parameters[0]);
+                monthNumber = monthNameToNumber(monthName);
+            } else {
+                monthName = "diesen Monat";
+                monthNumber = (new Date()).getMonth() + 1;
+            }
+            let scanArgs = buildShowMonthDatesScanArgs(monthNumber, "Garbage");
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
@@ -687,10 +647,10 @@ export class ShowGarbagesForMonthCommand implements JamesCommand {
 
     validateParameters(params: string[]): ValidationResult {
         let validationResult = new ValidationResult();
-        if (params.length != 1) {
-            validationResult.errorMessage = "Ich brauche einen Parameter: Einen Monat.";
+        if (params.length > 1) {
+            validationResult.errorMessage = "Ich brauche maximal einen Parameter: Einen Monat.";
             validationResult.hasErrors = true;
-        } else if (!isMonthName(params[0])) {
+        } else if (params[0] != null && !isMonthName(params[0])) {
             validationResult.errorMessage = "Hmm... Der Parameter sieht nicht richtig aus. Denk dran: Ich brauche einen Monat.";
             validationResult.hasErrors = true;
         } else {
