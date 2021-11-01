@@ -57,7 +57,7 @@ for (let jamesCommand of commandList) {
             await ctx.reply("Dir gehorche ich nicht.");
         }
     });
-    bot.hears(new RegExp("^" + jamesCommand.commandString + "( [a-zA-Z]*)*$", "i"), async (ctx) => {
+    bot.hears(new RegExp("^" + jamesCommand.commandString + "( [0-9a-zA-Z]*)*$", "i"), async (ctx) => {
         if (hasValidChatID(ctx)) {
             await jamesCommand.execute(ctx);
         } else {
