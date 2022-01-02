@@ -86,6 +86,7 @@ function compareDates(a: { date: string }, b: { date: string }): number {
     }
 }
 
+// Scan only will only retrieve up to one MB of data! So this might produce some missing data problems
 export async function scanTable(args){
     let params = createScanParams(args);
     try {
@@ -93,7 +94,7 @@ export async function scanTable(args){
         data.Items = data.Items.sort(compareDates);
         return new AWSOperationResult(null, data)
     } catch (err) {
-        return new AWSOperationResult(err);
+        return new AWSOperationResult(err, null);
     }
 }
 

@@ -1,5 +1,6 @@
 import {deleteItem, putItem, scanTable} from "./aws_utils";
 import {
+    addDaysTo,
     BirthdayItem, buildShowMonthDatesScanArgs, buildShowNextDatesScanArgs,
     capitalizeFirstLetter,
     CommandContext, findNearestDate,
@@ -13,8 +14,8 @@ import {
     isName,
     isNonNegativeNumber,
     JamesCommand,
-    logAndReply, monthNameToNumber,
-    normalizeGarbageType, normalizeMonthName,
+    logReply, monthNameToNumber,
+    normalizeGarbageType, normalizeMonthName, subtract,
     ValidationResult
 } from "./command_utils";
 import {randomUUID} from "crypto";
@@ -24,7 +25,7 @@ export class AddBirthdayCommand implements JamesCommand {
     description = "Geburtstagsdatum hinzufügen.";
     useExample = "/ab Max Muster 27-3";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (!validationResult.hasErrors) {
@@ -34,23 +35,18 @@ export class AddBirthdayCommand implements JamesCommand {
             let item = this.createAddBirthdayItem(firstName, secondName, birthdayDate);
 
             let isDuplicate = await isBirthdayDuplicate(item);
-            let answer: string;
             let logMessage: string;
 
             if (isDuplicate) {
-                answer = "Danke, aber diesen Eintrag habe ich bereits. Versuch's nochmal :)";
-                logMessage = "Duplikat gefunden. Eintrag wird nicht hinzugefügt.";
+                logMessage = "Danke, aber diesen Eintrag habe ich bereits. Versuch's nochmal :)";
             } else {
                 console.log("Füge Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzu.");
                 let operationResult = await putItem(item);
-                answer = operationResult.hasError
-                    ? "Oh nein, da ist was schiefgelaufen..."
-                    : "Ich habe den Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzugefügt";
                 logMessage = operationResult.hasError
-                    ? "Kann Item nicht hinzufügen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                    : "Geburtstag hinzugefügt.";
+                    ? "Oh nein, da ist was schiefgelaufen..." + JSON.stringify(operationResult.error, null, 2)
+                    : "Ich habe den Geburstag von " + firstName + " " + secondName + " am " + birthdayDate + " hinzugefügt";
             }
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, logMessage);
         } else {
             await ctx.reply(validationResult.errorMessage);
         }
@@ -86,35 +82,32 @@ export class AddGarbageCommand implements JamesCommand {
     description = "Mülldatum hinzufügen.";
     useExample = "/ag gelb 14-7";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
-            let garbageType = parameters[0];
-            let garbageDate = parameters[1];
-            let item = this.createAddGarbageItem(garbageType, garbageDate);
-            let isDuplicate = await isGarbageDuplicate(item);
-
-            let answer: string;
-            let logMessage: string;
-
-            if (isDuplicate) {
-                answer = "Danke, aber diesen Eintrag habe ich bereits. Versuch's nochmal :)";
-                logMessage = "Duplikat gefunden. Eintrag wird nicht hinzugefügt.";
-            } else {
-                console.log("Füge Müll (" + garbageType + ") am " + garbageDate + " hinzu.");
-                let operationResult = await putItem(item);
-                answer = operationResult.hasError
-                    ? "Oh nein, da ist was schiefgelaufen..."
-                    : "Ich einen Mülltermin (" + garbageType + ") am " + garbageDate + " hinzugefügt";
-                logMessage = operationResult.hasError
-                    ? "Kann Item nicht hinzufügen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                    : "Mülltermin hinzugefügt.";
-            }
-            await logAndReply(ctx, logMessage, answer);
+            await this.execute(parameters[0], parameters[1], ctx);
         }
+    }
+
+    async execute(garbageType, garbageDate, ctx) {
+        let item = this.createAddGarbageItem(garbageType, garbageDate);
+        let isDuplicate = await isGarbageDuplicate(item);
+
+        let logMessage: string;
+
+        if (isDuplicate) {
+            logMessage = "Danke, aber diesen Eintrag habe ich bereits. Versuch's nochmal :)";
+        } else {
+            await ctx.reply("Füge Müll (" + garbageType + ") am " + garbageDate + " hinzu.");
+            let operationResult = await putItem(item);
+            logMessage = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..." + JSON.stringify(operationResult.error, null, 2)
+                : "Ich einen Mülltermin (" + garbageType + ") am " + garbageDate + " hinzugefügt";
+        }
+        await logReply(ctx, logMessage);
     }
 
     validateParameters(params: string[]): ValidationResult {
@@ -141,44 +134,86 @@ export class AddGarbageCommand implements JamesCommand {
     }
 }
 
+export class AddPeriodicGarbageCommand implements JamesCommand {
+    commandString = "apg";
+    description = "Periodisches Mülldatum mit Anfangstag, Zeitraumende und Periode (in Wochen) hinzufügen.";
+    useExample = "/apg gelb 4-1 4";
+
+    async handleContext(ctx: CommandContext) {
+        let parameters = getCommandParameters(ctx);
+        let validationResult = this.validateParameters(parameters);
+        if (validationResult.hasErrors) {
+            await ctx.reply(validationResult.errorMessage);
+        } else {
+            let garbageType = parameters[0];
+            let garbageStartDate = parameters[1];
+            let period = parseInt(parameters[2]);
+            let garbageDates = this.createGarbageDates(garbageStartDate, period);
+            await ctx.reply("Garbage Dates I generated: " + garbageDates);
+            for (let garbageDate of garbageDates) {
+                let addCommand = new AddGarbageCommand();
+                await addCommand.execute(garbageType, garbageDate, ctx)
+            }
+        }
+    }
+
+    validateParameters(params: string[]): ValidationResult {
+        let validationResult = new ValidationResult();
+        if (params.length != 3) {
+            validationResult.errorMessage = "Ich brauche drei Parameter: Müllfarbe, Anfangsdatum (dd-mm) und eine Periode. Bitte nochmal";
+            validationResult.hasErrors = true;
+        } else if (!(isGarbageType(params[0]) && isDate(params[1]) && isNonNegativeNumber(params[2]))) {
+            validationResult.errorMessage = "Hmm... Die Parameter sehen nicht richtig aus. Denk dran: Erst Müllfarbe, dann ein Datum für den Start wie 31-12 oder 6-7. Schließlich noch eine Zahl, die die Periodenlänge in Wochen angibt. Und alle Parameter durch Leerzeichen getrennt.";
+            validationResult.hasErrors = true;
+        } else {
+            validationResult.hasErrors = false;
+        }
+        return validationResult;
+    }
+
+    createGarbageDates(garbageStartDate: string, period: number): string[] {
+        let numberOfDates = subtract("31-12", garbageStartDate)/(7 * period);
+        let currentDate: string = garbageStartDate;
+        let result = [];
+        for (let i = 0; i < numberOfDates; i++) {
+            result.push(currentDate);
+            currentDate = addDaysTo(currentDate, 7 * period);
+        }
+        return result;
+    }
+}
+
 export class DeleteGarbageCommand implements JamesCommand {
     commandString = "dg";
     description = "Mülldatum entfernen.";
     useExample = "/dg 14-3";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
             await ctx.reply(validationResult.errorMessage);
         } else {
             let date = parameters[0];
-
             const scanArgs = {
-                FilterExpression: "#Type = :birthday and #Date = :date",
+                FilterExpression: "#Type = :garbage and #Date = :date",
                 ExpressionAttributeNames: {
                     "#Type": "event_type",
                     "#Date": "date"
                 },
                 ExpressionAttributeValues: {
-                    ":birthday": "Birthday",
+                    ":garbage": "Garbage",
                     ":date": date
                 }
             };
 
-            let answer: string;
-            let logMessage: string;
-
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
-            answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+            let answer: string = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen..." + JSON.stringify(operationResult.error, null, 2)
                 : "Am " + date + " sind " + data.Count + " Mülltermine gespeichert. Alle diese Termine werde ich löschen.";
-            logMessage = operationResult.hasError
-                ? "Kann Mülldaten nicht löschen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Mülldaten am " + date + " werden gelöscht.";
 
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, answer);
 
             if (!operationResult.hasError && data.Count > 0) {
                 for (const row of data.Items) {
@@ -213,7 +248,7 @@ export class DeleteAllGarbagesCommand implements JamesCommand {
     description = "Alle gespeicherten Mülldaten entfernen.";
     useExample = "/dag";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         const scanArgs = {
             FilterExpression: "#Type = :garbage",
             ExpressionAttributeNames: {
@@ -225,18 +260,13 @@ export class DeleteAllGarbagesCommand implements JamesCommand {
         };
 
         let answer: string;
-        let logMessage: string;
 
         let operationResult = await scanTable(scanArgs);
         let data = operationResult.data;
         answer = operationResult.hasError
-            ? "Oh nein, da ist was schiefgelaufen..."
+            ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
             : "Ich habe " + data.Count + " Mülldaten gefunden. Alle diese Daten werde ich löschen.";
-        logMessage = operationResult.hasError
-            ? "Kann Geburtstag nicht löschen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-            : "Mülldaten werden gelöscht.";
-
-        await logAndReply(ctx, logMessage, answer);
+        await logReply(ctx, answer);
 
         if (!operationResult.hasError && data.Count > 0) {
             for (const row of data.Items) {
@@ -256,7 +286,7 @@ export class DeleteBirthdayCommand implements JamesCommand {
     description = "Geburtstag entfernen.";
     useExample = "/db Hannah Meier 13-2";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -280,18 +310,14 @@ export class DeleteBirthdayCommand implements JamesCommand {
             };
 
             let answer: string;
-            let logMessage: string;
 
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+                ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
                 : "Die genannte Person (" + firstName + " " + secondName + ") ist " + data.Count + " mal gespeichert. Alle diese Daten werde ich löschen.";
-            logMessage = operationResult.hasError
-                ? "Kann Geburtstag nicht löschen. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Geburtstag gelöscht.";
 
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, answer);
 
             if (!operationResult.hasError && data.Count > 0) {
                 for (const row of data.Items) {
@@ -327,7 +353,7 @@ export class ShowNextBirthdaysCommand implements JamesCommand {
     description = "Geburtstage in den nächsten n Tagen anzeigen.";
     useExample = "/snb 17";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -338,12 +364,9 @@ export class ShowNextBirthdaysCommand implements JamesCommand {
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+                ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
                 : this.buildAnswer(data, numberOfDays);
-            let logMessage = operationResult.hasError
-                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Geburtstage gefunden.";
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, answer);
         }
     }
 
@@ -375,7 +398,7 @@ export class ShowNextGarbagesCommand implements JamesCommand {
     description = "Mülldaten in den nächsten n Tagen anzeigen.";
     useExample = "/sng 14";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -386,12 +409,9 @@ export class ShowNextGarbagesCommand implements JamesCommand {
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+                ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
                 : this.buildAnswer(data, numberOfDays);
-            let logMessage = operationResult.hasError
-                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Mülldaten gefunden.";
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, answer);
         }
     }
 
@@ -423,7 +443,7 @@ export class ShowBirthdayForNameCommand implements JamesCommand {
     description = "Geburtsdatum einer bestimmten Person ausgeben.";
     useExample = "/sbfn John Doe";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -435,22 +455,19 @@ export class ShowBirthdayForNameCommand implements JamesCommand {
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+                ? "Oh nein, da ist was schiefgelaufen..." + JSON.stringify(operationResult.error, null, 2)
                 : this.buildAnswer(data, firstName, lastName);
-            let logMessage = operationResult.hasError
-                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Geburtstag gefunden.";
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, answer);
         }
     }
 
     buildAnswer(data, firstName: string, lastName: string) {
         if (data.Count > 0) {
             let date = "";
-           data.Items.forEach(row => {
-               date += row.date;
-           })
-           return firstName + " " + lastName + " hat am " + date + " Geburtstag. Wuff!"
+            data.Items.forEach(row => {
+                date += row.date;
+            })
+            return firstName + " " + lastName + " hat am " + date + " Geburtstag. Wuff!"
         }
         return "Ich finde leider niemanden in meiner Datenbank, der so heißt :("
     }
@@ -491,7 +508,7 @@ export class ShowNextGarbageForTypeCommand implements JamesCommand {
     description = "Nächstes Datum für eine bestimmte Müllfarbe anzeigen.";
     useExample = "/sgft gelb";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -502,19 +519,16 @@ export class ShowNextGarbageForTypeCommand implements JamesCommand {
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
             let answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+                ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
                 : this.buildAnswer(data, garbageType);
-            let logMessage = operationResult.hasError
-                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Mülldatum gefunden.";
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, answer);
         }
     }
 
     buildAnswer(data, garbageType: string) {
         if (data.Count > 0) {
             let nearestDate = findNearestDate(data.Items);
-            return "Der nächste Müll (" + garbageType + ") wird am " +  nearestDate + " geholt. Wuff!"
+            return "Der nächste Müll (" + garbageType + ") wird am " + nearestDate + " geholt. Wuff!"
         }
         return "Ich finde keinen solchen Mülleintrag in meiner Datenbank :("
     }
@@ -553,7 +567,7 @@ export class ShowBirthdaysForMonthCommand implements JamesCommand {
     description = "Alle Geburtsdaten in einem bestimmten Monat anzeigen (default ist der jetzige Monat).";
     useExample = "/sbfm Januar";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -571,13 +585,10 @@ export class ShowBirthdaysForMonthCommand implements JamesCommand {
             let scanArgs = buildShowMonthDatesScanArgs(monthNumber, "Birthday");
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
-            let answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
-                : this.buildAnswer(data, monthName);
             let logMessage = operationResult.hasError
-                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Mülldatum gefunden.";
-            await logAndReply(ctx, logMessage, answer);
+                ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
+                : this.buildAnswer(data, monthName);
+            await logReply(ctx, logMessage);
         }
     }
 
@@ -609,7 +620,7 @@ export class ShowGarbagesForMonthCommand implements JamesCommand {
     description = "Mülldaten für Monat anzeigen (default ist der jetzige Monat).";
     useExample = "/sgfm Juni";
 
-    async execute(ctx: CommandContext) {
+    async handleContext(ctx: CommandContext) {
         let parameters = getCommandParameters(ctx);
         let validationResult = this.validateParameters(parameters);
         if (validationResult.hasErrors) {
@@ -627,13 +638,10 @@ export class ShowGarbagesForMonthCommand implements JamesCommand {
             let scanArgs = buildShowMonthDatesScanArgs(monthNumber, "Garbage");
             let operationResult = await scanTable(scanArgs);
             let data = operationResult.data;
-            let answer = operationResult.hasError
-                ? "Oh nein, da ist was schiefgelaufen..."
+            let logMessage: string = operationResult.hasError
+                ? "Oh nein, da ist was schiefgelaufen...: " + JSON.stringify(operationResult.error, null, 2)
                 : this.buildAnswer(data, monthName);
-            let logMessage = operationResult.hasError
-                ? "Die Suche hat nicht funktioniert. Error JSON:" + JSON.stringify(operationResult.error, null, 2)
-                : "Mülldaten gefunden.";
-            await logAndReply(ctx, logMessage, answer);
+            await logReply(ctx, logMessage);
         }
     }
 

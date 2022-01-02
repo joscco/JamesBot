@@ -2,7 +2,7 @@ import {Telegraf} from "telegraf";
 import * as commands from "./command_utils";
 import {
     AddBirthdayCommand,
-    AddGarbageCommand,
+    AddGarbageCommand, AddPeriodicGarbageCommand,
     DeleteAllGarbagesCommand,
     DeleteBirthdayCommand,
     DeleteGarbageCommand,
@@ -24,6 +24,7 @@ if (botToken === undefined) {
 const commandList: JamesCommand[] = [
     new AddBirthdayCommand(),
     new AddGarbageCommand(),
+    new AddPeriodicGarbageCommand(),
     new DeleteBirthdayCommand(),
     new DeleteGarbageCommand(),
     new DeleteAllGarbagesCommand(),
@@ -52,14 +53,14 @@ bot.on('sticker', ctx => ctx.reply("😅"));
 for (let jamesCommand of commandList) {
     bot.command(jamesCommand.commandString, async (ctx) => {
         if (hasValidChatID(ctx)) {
-            await jamesCommand.execute(ctx);
+            await jamesCommand.handleContext(ctx);
         } else {
             await ctx.reply("Dir gehorche ich nicht.");
         }
     });
     bot.hears(new RegExp("^" + jamesCommand.commandString + "( [0-9a-zA-Z]*)*$", "i"), async (ctx) => {
         if (hasValidChatID(ctx)) {
-            await jamesCommand.execute(ctx);
+            await jamesCommand.handleContext(ctx);
         } else {
             await ctx.reply("Dir gehorche ich nicht.");
         }

@@ -15,7 +15,7 @@ export interface JamesCommand {
     useExample: string;
     description: string;
 
-    execute(ctx: CommandContext): Promise<void>;
+    handleContext(ctx: CommandContext): Promise<void>;
 }
 
 export type BirthdayItem = {
@@ -49,6 +49,7 @@ export function hasValidChatID(ctx: CommandContext): boolean {
 export function isValidID(input: string): boolean {
     return chat_ids.includes(input);
 }
+
 export function isDate(input: string): boolean {
     return dateRegex.test(input);
 }
@@ -116,9 +117,8 @@ export function monthNameToNumber(monthName: string): number {
     }
 }
 
-export function logAndReply(ctx, logMessage: string, answer: string) {
-    console.log(logMessage);
-    ctx.reply(answer);
+export async function logReply(ctx, logMessage: string) {
+    await ctx.reply(logMessage);
 }
 
 export async function isBirthdayDuplicate(birthdayItem: BirthdayItem): Promise<boolean> {
@@ -141,7 +141,7 @@ export async function isBirthdayDuplicate(birthdayItem: BirthdayItem): Promise<b
         }
     };
     let result = await scanTable(scanArgs);
-    return result.data.Count > 0;
+    return result.data && result.data.Count > 0;
 }
 
 export async function isGarbageDuplicate(garbageItem: GarbageItem): Promise<boolean> {
@@ -153,15 +153,14 @@ export async function isGarbageDuplicate(garbageItem: GarbageItem): Promise<bool
             "#GarbageType": "garbage_type"
         },
         ExpressionAttributeValues: {
-            ":birthday": "Birthday",
+            ":garbage": "Garbage",
             ":date": garbageItem.date,
             ":garbageType": garbageItem.garbage_type
         }
     };
     let result = await scanTable(scanArgs);
-    return result.data.Count > 0;
+    return result.data && result.data.Count > 0;
 }
-
 
 export function getCommandParameters(ctx: CommandContext): string[] {
     return ctx.update.message.text.split(" ").slice(1);
@@ -398,7 +397,14 @@ export function findNearestDate(itemList) {
     return minDate;
 }
 
-function subtract(date1, date2): number {
+export function subtract(date1, date2): number {
+    let distance = rareSubtract(date1, date2);
+    if (distance <= 0) {
+        return 365 - distance;
+    } else return distance;
+}
+
+function rareSubtract(date1: string, date2: string): number {
     let date1Tokens = date1.split("-");
     let date2Tokens = date2.split("-");
     let day1 = parseInt(date1Tokens[0]);
@@ -406,10 +412,19 @@ function subtract(date1, date2): number {
     let day2 = parseInt(date2Tokens[0]);
     let month2 = parseInt(date2Tokens[1]);
 
-    let distance = (month1 - month2) * 30 + (day1 - day2);
-    if (distance <= 0) {
-        return 365 - distance;
-    } else return distance;
+    return (month1 - month2) * 30 + (day1 - day2);
+}
+
+export function addDaysTo(date: string, days: number): string {
+    let dateTokens = date.split("-");
+    let day = parseInt(dateTokens[0]);
+    let month = parseInt(dateTokens[1]);
+    let year = new Date().getFullYear();
+
+    // Month is zero-indexed!
+    let dateWrapper = new Date(year, month-1, day);
+    dateWrapper.setDate(dateWrapper.getDate() + days);
+    return dateWrapper.getDate() + "-" + (dateWrapper.getMonth()+1);
 }
 
 export function getGarbageEmoji(type: string) {
