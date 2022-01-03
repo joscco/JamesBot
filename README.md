@@ -1,4 +1,4 @@
-<img src="JamesBot.jpg" align="right" alt="JamesBot in Action" width="400"/>
+<img src="JamesBot.jpg" alt="JamesBot in Action" width="100%"/>
 
 # JamesBot
 JamesBot is a Telegram Reminder Bot for Birthdays and Garbage Dates (for me who neither has facebook nor a very good date memory). 
