@@ -23,12 +23,11 @@
   },
   "homepage": "https://github.com/joscco/JamesBot#readme",
   "dependencies": {
-    "aws-sdk": "^2.963.0",
-    "crypto": "^1.0.1",
-    "telegraf": "^4.4.1",
+    "aws-sdk": "^2.1525.0",
+    "telegraf": "^4.15.3",
     "typegram": "^3.4.3"
   },
   "devDependencies": {
-    "@types/node": "^16.4.13"
+    "@types/node": "^20.10.5"
   }
 }
