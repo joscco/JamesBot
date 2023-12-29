@@ -50,13 +50,13 @@ export class AddPeriodicGarbage {
                 let garbageType = ctx.scene.session.garbageColor as GarbageType
                 let month = ctx.scene.session.startMonth
                 let day = ctx.scene.session.startDay
-                let period = ctx.message["text"]
+                let period = parseInt(ctx.message["text"])
 
                 let garbageDates = this.createGarbageDates(month, day, period);
                 for (let [periodicDay, periodicMonth] of garbageDates) {
                     await this.jamesRepo.addGarbage(garbageType, periodicDay, periodicMonth)
                 }
-                await ctx.reply("Ich habe folgende Mülldaten hinzugefügt: " + garbageDates);
+                await ctx.reply("Ich habe folgende Mülldaten hinzugefügt: " + garbageDates.map(([day, month]) => day + ". " + month ).join("\n"));
                 return await ctx.scene.leave();
             })
 
