@@ -1,15 +1,16 @@
 import {Context, Markup, Scenes, session, Telegraf} from "telegraf";
-import {AddGarbage} from "./Garbage/AddGarbage";
-import {AddBirthday} from "./Birthdays/AddBirthday";
 import {JamesTaskRepo} from "./infrastructure/JamesTaskRepo";
 import {BirthdayReminder} from "./Reminders/BirthdayReminder";
 import {GarbageReminder} from "./Reminders/GarbageReminder";
 import {ShowNextGarbages} from "./Garbage/ShowNextGarbages";
 import {ShowNextBirthdays} from "./Birthdays/ShowNextBirthdays";
 import {DeleteGarbage} from "./Garbage/DeleteGarbage";
-import {DeleteAllGarbages} from "./Garbage/DeleteAllGarbages";
 import {DeleteBirthday} from "./Birthdays/DeleteBirthday";
 import {AddPeriodicGarbage} from "./Garbage/AddPeriodicGarbage";
+import {IdChecker} from "./IdChecker";
+import {DeleteAllGarbages} from "./Garbage/DeleteAllGarbages";
+import {AddGarbage} from "./Garbage/AddGarbage";
+import {AddBirthday} from "./Birthdays/AddBirthday";
 
 export interface JamesContext extends Context {
     scene: Scenes.SceneContextScene<JamesContext, Scenes.WizardSessionData>;
@@ -88,8 +89,21 @@ const stage = new Scenes.Stage<JamesContext>([
 bot.use(session())
 bot.use(stage.middleware())
 
-bot.hears('Müll', ctx => ctx.scene.enter('GARBAGE_SCENE'));
-bot.hears('Geburtstage', ctx => ctx.scene.enter('BIRTHDAY_SCENE'));
+bot.hears('Müll', ctx => {
+        if (IdChecker.isValidID(ctx.message.from.id.toString())) {
+            return ctx.scene.enter('GARBAGE_SCENE')
+        } else {
+            ctx.reply("Dir gehorche ich nicht.");
+        }
+});
+
+bot.hears('Geburtstage', ctx => {
+    if (IdChecker.isValidID(ctx.message.from.id.toString())) {
+        return ctx.scene.enter('BIRTHDAY_SCENE')
+    } else {
+        ctx.reply("Dir gehorche ich nicht.");
+    }
+});
 bot.hears('Abbrechen', ctx => ctx.scene.leave())
 
 bot.on('message', Telegraf.reply("Womit kann ich helfen?",

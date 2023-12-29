@@ -1,7 +1,6 @@
 import {JamesTaskRepo} from "../infrastructure/JamesTaskRepo";
 import {ConverterUtils} from "../ConverterUtils";
-
-export const CHAT_IDs = [process.env.MA_CHAT_ID, process.env.JO_CHAT_ID];
+import {IdChecker} from "../IdChecker";
 
 export class GarbageReminder {
 
@@ -28,7 +27,7 @@ export class GarbageReminder {
 
     async sendGarbageReminderMessages(bot, data) {
         for (const garbage of data.Items) {
-            for (const chat_id of CHAT_IDs) {
+            for (const chat_id of IdChecker.getValidChatIds()) {
                 try {
                     let message = this.generateGarbageReminderMessage(garbage);
                     await bot.telegram.sendMessage(chat_id, message);
