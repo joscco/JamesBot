@@ -1,9 +1,9 @@
 import {WizardScene} from "telegraf/typings/scenes";
 import {Scenes} from "telegraf";
-import {JamesContextWithSession} from "../index";
 import {ConverterUtils, Month} from "../ConverterUtils";
 import {KeyboardUtils} from "../KeyboardUtils";
 import {JamesTaskRepo} from "../infrastructure/JamesTaskRepo";
+import {JamesContextWithSession} from "../James";
 
 export interface AddBirthdayWizardSession extends Scenes.WizardSessionData {
     firstName: string;

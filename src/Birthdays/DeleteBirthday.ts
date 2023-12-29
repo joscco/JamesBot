@@ -1,9 +1,9 @@
 import {WizardScene} from "telegraf/typings/scenes";
 import {Markup, Scenes} from "telegraf";
-import {JamesContextWithSession} from "../index";
 import {JamesDataBaseItem} from "../infrastructure/AWSClient";
 import {KeyboardUtils} from "../KeyboardUtils";
 import {JamesTaskRepo} from "../infrastructure/JamesTaskRepo";
+import {JamesContextWithSession} from "../James";
 
 export interface DeleteBirthdayWizardSession extends Scenes.WizardSessionData {
     events: JamesDataBaseItem[]

@@ -1,10 +1,10 @@
 import {WizardScene, WizardSessionData} from "telegraf/typings/scenes";
 import {Scenes} from "telegraf";
-import {JamesContextWithSession} from "../index";
 import {ConverterUtils} from "../ConverterUtils";
 import {KeyboardUtils} from "../KeyboardUtils";
 import {JamesTaskRepo} from "../infrastructure/JamesTaskRepo";
 import {JamesDataBaseItem} from "../infrastructure/AWSClient";
+import {JamesContextWithSession} from "../James";
 
 export class ShowNextBirthdays {
 

@@ -1,9 +1,9 @@
 import {WizardScene} from "telegraf/typings/scenes";
 import {Markup, Scenes} from "telegraf";
-import {JamesContextWithSession} from "../index";
 import {KeyboardUtils} from "../KeyboardUtils";
 import {JamesTaskRepo} from "../infrastructure/JamesTaskRepo";
 import {JamesDataBaseItem} from "../infrastructure/AWSClient";
+import {JamesContextWithSession} from "../James";
 
 export interface DeleteGarbageWizardSession extends Scenes.WizardSessionData {
     events: JamesDataBaseItem[]

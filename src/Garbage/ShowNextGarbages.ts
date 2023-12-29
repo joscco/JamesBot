@@ -1,10 +1,10 @@
 import {WizardScene, WizardSessionData} from "telegraf/typings/scenes";
 import {Scenes} from "telegraf";
-import {JamesContextWithSession} from "../index";
 import {JamesDataBaseItem} from "../infrastructure/AWSClient";
 import {ConverterUtils} from "../ConverterUtils";
 import {KeyboardUtils} from "../KeyboardUtils";
 import {JamesTaskRepo} from "../infrastructure/JamesTaskRepo";
+import {JamesContextWithSession} from "../James";
 
 export class ShowNextGarbages {
 
