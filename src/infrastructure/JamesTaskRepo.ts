@@ -1,6 +1,7 @@
 import {AWSClient, JamesDataBaseItem, JamesDateType} from "./AWSClient";
 import {ConverterUtils, GarbageType, Month} from "../ConverterUtils";
 import {randomUUID} from "crypto";
+import {DocumentClient, ScanOutput} from "aws-sdk/clients/dynamodb";
 
 export class JamesTaskRepo {
 
@@ -89,7 +90,7 @@ export class JamesTaskRepo {
         return await this.getAllDatesOfType("Birthday")
     }
 
-    private async getDatesForDateAndType(day: number, month: Month, type: JamesDateType) {
+    private async getDatesForDateAndType(day: number, month: Month, type: JamesDateType): Promise<ScanOutput> {
         let birthdayArgs = {
             FilterExpression: "#Datum = :today and #Type = :birthday",
             ExpressionAttributeNames: {
@@ -103,7 +104,7 @@ export class JamesTaskRepo {
         }
 
         let scanResult = await this.awsClient.scanTable(birthdayArgs);
-        return scanResult.data.Items;
+        return scanResult.data;
     }
 
     private async getAllDatesOfType(type: JamesDateType): Promise<JamesDataBaseItem[]> {

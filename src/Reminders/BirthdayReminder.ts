@@ -19,7 +19,7 @@ export class BirthdayReminder {
             // get today
             console.log("Daten waren: Datum heute: " + todayAsString);
             console.log("Scan erfolgreich.");
-            console.log("Heute gibt es " + data.length + " Geburtstag(e).");
+            console.log("Heute gibt es " + data.Items.length + " Geburtstag(e).");
             console.log("Scan erfolgreich.");
             await this.sendBirthdayReminderMessages(bot, data);
         } catch (err) {

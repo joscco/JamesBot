@@ -17,7 +17,7 @@ export class GarbageReminder {
             let data = await this.jamesRepo.getGarbagesForDate(tomorrow.day, tomorrow.month);
             console.log("Daten waren: Datum morgen: " + tomorrowAsString);
             console.log("Scan erfolgreich.");
-            console.log("Heute gibt es " + data.length + " Mülldaten.");
+            console.log("Heute gibt es " + data.Items.length + " Mülldaten.");
             console.log("Scan erfolgreich.");
             await this.sendGarbageReminderMessages(bot, data);
         } catch (err) {
