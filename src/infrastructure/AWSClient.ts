@@ -34,7 +34,7 @@ export class AWSClient {
 
     // Scan only will only retrieve up to one MB of data! So this might produce some missing data problems
 
-    public async scanTable(args: DocumentClient.ScanInput): Promise<AWSOperationResult> {
+    public async scanTable(args: Omit<DocumentClient.ScanInput, "TableName">): Promise<AWSOperationResult> {
         let params = this.createScanParams(args);
         try {
             const data = await this.dynamoClient.scan(params).promise();
@@ -72,7 +72,7 @@ export class AWSClient {
         };
     }
 
-    private createScanParams(args: ScanArgs): AWS.DynamoDB.DocumentClient.ScanInput {
+    private createScanParams(args: Omit<AWS.DynamoDB.DocumentClient.ScanInput, "TableName">): AWS.DynamoDB.DocumentClient.ScanInput {
         return {
             TableName: this.tableName,
             FilterExpression: args.FilterExpression,
