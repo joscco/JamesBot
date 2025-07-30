@@ -2,12 +2,6 @@ import * as AWS from "aws-sdk";
 import {PromiseResult} from "aws-sdk/lib/request";
 import {DocumentClient} from "aws-sdk/clients/dynamodb";
 
-type ScanArgs = {
-    FilterExpression: string,
-    ExpressionAttributeNames: any,
-    ExpressionAttributeValues: any
-};
-
 export type JamesDateType = "Birthday" | "Garbage"
 
 export type JamesDataBaseItem = {
@@ -40,7 +34,7 @@ export class AWSClient {
 
     // Scan only will only retrieve up to one MB of data! So this might produce some missing data problems
 
-    public async scanTable(args: ScanArgs): Promise<AWSOperationResult> {
+    public async scanTable(args: DocumentClient.ScanInput): Promise<AWSOperationResult> {
         let params = this.createScanParams(args);
         try {
             const data = await this.dynamoClient.scan(params).promise();

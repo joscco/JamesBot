@@ -110,13 +110,21 @@ export class JamesTaskRepo {
     private async getAllDatesOfType(type: JamesDateType): Promise<JamesDataBaseItem[]> {
         let scanArgs = {
             FilterExpression: "#Type = :type",
-            ExpressionAttributeNames: {
-                "#Type": "event_type"
-            },
-            ExpressionAttributeValues: {":type": type}
-        }
-        let scanResult = await this.awsClient.scanTable(scanArgs);
-        return scanResult.data.Items.map(item => item as JamesDataBaseItem);
+            ExpressionAttributeNames: { "#Type": "event_type" },
+            ExpressionAttributeValues: { ":type": type }
+        };
+        let items: JamesDataBaseItem[] = [];
+        let lastEvaluatedKey = undefined;
+
+        do {
+            const result = await this.awsClient.scanTable({ ...scanArgs, ExclusiveStartKey: lastEvaluatedKey });
+            if (result.data.Items) {
+                items.push(...result.data.Items.map(item => item as JamesDataBaseItem));
+            }
+            lastEvaluatedKey = result.data.LastEvaluatedKey;
+        } while (lastEvaluatedKey);
+
+        return items;
     }
 
 
