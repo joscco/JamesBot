@@ -75,9 +75,7 @@ export class AWSClient {
     private createScanParams(args: Omit<AWS.DynamoDB.DocumentClient.ScanInput, "TableName">): AWS.DynamoDB.DocumentClient.ScanInput {
         return {
             TableName: this.tableName,
-            FilterExpression: args.FilterExpression,
-            ExpressionAttributeNames: args.ExpressionAttributeNames,
-            ExpressionAttributeValues: args.ExpressionAttributeValues
+            ...args
         };
     }
 }
