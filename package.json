@@ -27,7 +27,7 @@
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
-    "@telegraf/types": "^8.3.1",
-    "@types/node": "^20.10.5"
+    "@types/node": "^20.10.5",
+    "typescript": "^5.8.3"
   }
 }

@@ -1,8 +1,7 @@
 import {Markup} from "telegraf";
-import {ReplyKeyboardMarkup} from "typegram";
 
 export class KeyboardUtils {
-    static createDayOfMonthKeyboard(): Markup.Markup<ReplyKeyboardMarkup> {
+    static createDayOfMonthKeyboard() {
         return Markup.keyboard([
             ["1", "2", "3", "4", "5", "6", "7"],
             ["8", "9", "10", "11", "12", "13", "14"],
@@ -14,13 +13,13 @@ export class KeyboardUtils {
             .resize()
     }
 
-    static createMonthKeyboard(): Markup.Markup<ReplyKeyboardMarkup> {
+    static createMonthKeyboard() {
         return Markup.keyboard([
-            ["Januar", "Februar", "März"],
-            ["April", "Mai", "Juni"],
-            ["Juli", "August", "September"],
-            ["Oktober", "November", "Dezember"],
-            ["Abbrechen"]
+            [{ text: "Januar" }, { text: "Februar" }, { text: "März" }],
+            [{ text: "April" }, { text: "Mai" }, { text: "Juni" }],
+            [{ text: "Juli" }, { text: "August" }, { text: "September" }],
+            [{ text: "Oktober" }, { text: "November" }, { text: "Dezember" }],
+            [{ text: "Abbrechen" }]
         ])
             .oneTime()
             .resize()
