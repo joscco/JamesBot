@@ -29,8 +29,8 @@ export class ShowNextGarbages {
                 let filteredItems = items.filter(item => {
                     let [day, monthAsNum] = (item.date as string).split("-").map(s => parseInt(s))
                     let month = ConverterUtils.numberToMonthName(monthAsNum)
-                    let distance = ConverterUtils.dateSubtract(day, month, today.day, today.month)
-                    return distance >= 0 && distance <= numberOfDays
+                    let distance = ConverterUtils.dateDistance(day, month, today.day, today.month)
+                    return distance <= numberOfDays
                 })
 
                 let answer = this.buildAnswer(filteredItems, numberOfDays);

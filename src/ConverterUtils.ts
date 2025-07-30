@@ -80,10 +80,11 @@ export class ConverterUtils {
         return (month1 - month2) * 30 + (day1 - day2);
     }
 
-    static dateSubtract(dayTo: number, monthTo: Month, dayFrom: number, monthFrom: Month): number {
+    static dateDistance(dayTo: number, monthTo: Month, dayFrom: number, monthFrom: Month): number {
         let monthToNum = this.monthNameToNumber(monthTo)
         let monthFromNum = this.monthNameToNumber(monthFrom)
-        return (((monthToNum - monthFromNum) + 12) % 12) * 30 + (dayTo - dayFrom);
+        let diff = (((monthToNum - monthFromNum) + 12) % 12) * 30 + (dayTo - dayFrom);
+        return diff < 0 ? diff + 365 : diff;
     }
 
     static addDaysTo(date: string, days: number): string {
